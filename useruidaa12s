@@ -65,8 +65,8 @@ local function updateSCPCandidate(descendant, adding)
     if not descendant:IsA("Model") then return end
     local name = string.lower(descendant.Name)
     if string.find(name, "scp") then
-        -- Filter out useless visuals (static props, signs, terminals, etc.)
-        if name:find("sign") or name:find("terminal") or name:find("button") or name:find("door") or name:find("class") or name:find("containment") or name:find("tesla") then
+        -- Filter out useless visuals (static props, signs, terminals, cameras, etc.)
+        if name:find("sign") or name:find("terminal") or name:find("button") or name:find("door") or name:find("class") or name:find("containment") or name:find("tesla") or name:find("camera") or name:find("bowl") or name:find("cc") or name:find("pipe") or name:find("966") or name:find("299") or name:find("2950") or name:find("066") or name:find("023") or (name:find("049") and not name:find("049%-2")) or name:find("082") or name:find("180") or name:find("076") then
             if adding then
                 SCPCandidateCache[descendant] = nil -- Ensure it's removed if it was there
             end
@@ -214,15 +214,26 @@ local function IsFriend(p) return lp and lp:IsFriendsWith(p.UserId) end
 local function RetrievePlayerTeamName(p) return p.Team and p.Team.Name or "NoTeam" end
 local function ResolveFont(name)
     if type(name) ~= "string" then return Enum.Font.SourceSansBold end
-    local ef = Enum.Font[name]
-    if ef then return ef end
-    if name == "RobotoMono" or name == "Code" then return Enum.Font.Code end
-    if name == "Plex" or name == "System" then return Enum.Font.SourceSans end
-    if name == "SourceSansBold" then return Enum.Font.SourceSansBold end
-    if name == "SourceSans" then return Enum.Font.SourceSans end
-    if name == "Gotham" or name == "GothamBlack" then return Enum.Font.Gotham end
-    if name == "Verdana" then return Enum.Font.Arial end
-    if Fonts and Fonts[name] then return Fonts[name] end
+    
+    -- Match buckets from DrawingFontFromName exactly
+    
+    -- Bucket 1: Tech/Retro -> Plex (Drawing) -> RobotoMono (Roblox)
+    -- This ensures visual similarity to the Drawing "Plex" font
+    if name == "Plex" or name == "Minecraftia" or name == "Pixel" or name == "Arcade" then 
+        return Enum.Font.RobotoMono 
+    end
+    
+    -- Bucket 2: Monospace -> Monospace (Drawing) -> Code (Roblox)
+    if name == "RobotoMono" or name == "Code" then 
+        return Enum.Font.Code 
+    end
+    
+    -- Bucket 3: System -> System (Drawing) -> Arial (Roblox)
+    if name == "System" then 
+        return Enum.Font.Arial 
+    end
+    
+    -- Bucket 4: Default -> UI (Drawing) -> SourceSansBold (Roblox)
     return Enum.Font.SourceSansBold
 end
 
@@ -367,8 +378,8 @@ local function LockCameraToTargetPlayer()
         if scpModel and scpModel.Parent then
             local scpName = string.lower(scpModel.Name)
             local allowed = false
-            -- Only matches "SCP-049-2" and "SCP-008-2" variants
-            if scpName:find("scp[%s%-]*049[%s%-]*2") or scpName:find("scp[%s%-]*008[%s%-]*2") then
+            -- Only matches "SCP-049-2", "SCP-008-2", and "SCP-016-2" variants
+            if scpName:find("scp[%s%-]*049[%s%-]*2") or scpName:find("scp[%s%-]*008[%s%-]*2") or scpName:find("scp[%s%-]*016[%s%-]*2") then
                 allowed = true
             end
 
@@ -796,9 +807,19 @@ local function characterCenterOnScreen(char)
 end
 
 local function DrawingFontFromName(name)
-    if name == "Plex" then return Drawing.Fonts.Plex end
-    if name == "RobotoMono" or name == "Code" then return Drawing.Fonts.Monospace end
-    if name == "System" then return Drawing.Fonts.System end
+    -- Bucket 1: Tech/Retro -> Plex
+    if name == "Plex" or name == "Minecraftia" or name == "Pixel" or name == "Arcade" then 
+        return Drawing.Fonts.Plex 
+    end
+    -- Bucket 2: Monospace -> Monospace
+    if name == "RobotoMono" or name == "Code" then 
+        return Drawing.Fonts.Monospace 
+    end
+    -- Bucket 3: System -> System
+    if name == "System" then 
+        return Drawing.Fonts.System 
+    end
+    -- Bucket 4: Default -> UI
     return Drawing.Fonts.UI
 end
 local function computeAABB(character)
@@ -1196,6 +1217,19 @@ run.RenderStepped:Connect(function()
             end
             for d, _ in pairs(SCPCandidateCache) do
                 if d and d.Parent then
+                    -- Filter out non-humanoid SCPs (static props that slipped through)
+                    if not d:FindFirstChildOfClass("Humanoid") then
+                        if SCPESPCache[d] then
+                            SCPESPCache[d]:Destroy()
+                            SCPESPCache[d] = nil
+                        end
+                        if SCPNameCache[d] then
+                            SCPNameCache[d]:Destroy()
+                            SCPNameCache[d] = nil
+                        end
+                        continue
+                    end
+
                     local posPart = d.PrimaryPart or d:FindFirstChild("HumanoidRootPart")
                     if not posPart then
                         for _, ch in ipairs(d:GetChildren()) do
@@ -1266,8 +1300,9 @@ run.RenderStepped:Connect(function()
                             tl.Size = UDim2.new(1, 0, 1, 0)
                             tl.BackgroundTransparency = 1
                             tl.TextScaled = false
-                            tl.Font = ResolveFont(VisualsTextFontName)
-                            tl.TextSize = VisualsTextSize
+                            -- Force hardcoded font and size as requested
+                            tl.Font = Enum.Font.RobotoMono
+                            tl.TextSize = 10
                             tl.TextStrokeTransparency = 0
                             tl.TextStrokeColor3 = Color3.new(0,0,0)
                             tl.TextXAlignment = Enum.TextXAlignment.Center
@@ -8324,12 +8359,7 @@ do
         default = "SourceSansBold",
         callback = function(state)
             VisualsTextFontName = state
-            for m, bb in pairs(SCPNameCache) do
-                local tl = bb:FindFirstChildOfClass("TextLabel")
-                if tl then
-                    tl.Font = ResolveFont(state)
-                end
-            end
+            -- Removed SCPNameCache update loop to prevent interference
             for p, cache in pairs(ESPCache) do
                 if cache then
                     local df = DrawingFontFromName(state)
@@ -8347,10 +8377,7 @@ do
         min = 5, max = 15, default = 13,
         callback = function(v)
             VisualsTextSize = v
-            for _, bb in pairs(SCPNameCache) do
-                local tl = bb and bb:FindFirstChildOfClass("TextLabel")
-                if tl then tl.TextSize = v end
-            end
+            -- Removed SCPNameCache update loop to prevent interference
             for _, cache in pairs(ESPCache) do
                 if cache then
                     if cache.name_text then cache.name_text.Size = v end
