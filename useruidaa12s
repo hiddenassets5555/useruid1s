@@ -306,6 +306,15 @@ local function LockCameraToTargetPlayer()
         CurrentTarget = nil
         return
     end
+
+    if flags.toggle_required_weapon then
+        local tool = lp.Character:FindFirstChildOfClass("Tool")
+        if not tool then
+            CurrentTarget = nil
+            return
+        end
+    end
+
     if flags.toggle_sticky_lock and CurrentTarget then
         local ct = CurrentTarget
         local ch = ct
@@ -8067,6 +8076,7 @@ do
     local fovSlider
     local DottedToggle
     local DottedDivider
+    local RequiredWeaponToggle
     local fovToggle = Combat:toggle({
         name = "FOV Visible",
         flag = "toggle_fov_circle",
@@ -8108,6 +8118,9 @@ do
             if DottedDivider then
                 DottedDivider.Visible = v
             end
+            if RequiredWeaponToggle then
+                RequiredWeaponToggle.set_element_visible(v)
+            end
         end
     })
     DottedDivider = library:create("Frame", {
@@ -8119,6 +8132,13 @@ do
         Visible = false
     })
     library:apply_theme(DottedDivider, "accent", "BackgroundColor3")
+    RequiredWeaponToggle = Combat:toggle({
+        name = "Required Weapon",
+        flag = "toggle_required_weapon",
+        default = false,
+        callback = function(v) end
+    })
+    RequiredWeaponToggle.set_element_visible(false)
     DottedToggle = Combat:toggle({
         name = "Dotted",
         flag = "toggle_dotted_fov",
