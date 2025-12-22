@@ -367,8 +367,8 @@ local function LockCameraToTargetPlayer()
         if scpModel and scpModel.Parent then
             local scpName = string.lower(scpModel.Name)
             local allowed = false
-            -- Only matches "SCP-049-2" variants (e.g. "SCP-049-2", "SCP 049 2", "SCP0492")
-            if scpName:find("scp[%s%-]*049[%s%-]*2") then
+            -- Only matches "SCP-049-2" and "SCP-008-2" variants
+            if scpName:find("scp[%s%-]*049[%s%-]*2") or scpName:find("scp[%s%-]*008[%s%-]*2") then
                 allowed = true
             end
 
