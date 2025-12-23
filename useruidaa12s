@@ -980,12 +980,15 @@ local function updateSkeletonLines(p, lines, outlines)
 
     local cache = ESPCache[p]
     
-    -- Update part cache if character changed
-    if cache and cache.cachedChar ~= p.Character then
+    -- Update part cache if character changed or periodically
+    local now = tick()
+    if cache and (cache.cachedChar ~= p.Character or (now - (cache.lastSkeletonCheck or 0) > 2)) then
         cache.cachedChar = p.Character
-        cache.skeletonMap = {}
+        cache.lastSkeletonCheck = now
+        cache.skeletonMap = cache.skeletonMap or {}
         for _, name in ipairs(uniqueSkeletonParts) do
-            cache.skeletonMap[name] = getPartSafe(p.Character, name)
+            local part = getPartSafe(p.Character, name)
+            cache.skeletonMap[name] = part or false -- Cache false if missing to avoid repeated lookups
         end
         cache.rootPart = p.Character:FindFirstChild("HumanoidRootPart") or p.Character:FindFirstChild("Torso") or p.Character:FindFirstChild("UpperTorso")
     end
@@ -997,8 +1000,14 @@ local function updateSkeletonLines(p, lines, outlines)
         if not onScreen then
             local dist = (camera.CFrame.Position - root.Position).Magnitude
             if dist > 60 then
-                for _, line in ipairs(lines) do line.Visible = false end
-                if outlines then for _, line in ipairs(outlines) do line.Visible = false end end
+                for _, line in ipairs(lines) do 
+                    if line.Visible then line.Visible = false end 
+                end
+                if outlines then 
+                    for _, line in ipairs(outlines) do 
+                        if line.Visible then line.Visible = false end 
+                    end 
+                end
                 return
             end
         end
@@ -1006,13 +1015,25 @@ local function updateSkeletonLines(p, lines, outlines)
 
     -- Optimization: Cache part positions and occlusion status once per frame
     local partPositions = {}
+    local menuOpen = library and library.menu_open
+    
     for _, name in ipairs(uniqueSkeletonParts) do
-        local part = cache and cache.skeletonMap and cache.skeletonMap[name] or getPartSafe(p.Character, name)
-        if part and part.Parent then
+        local part = cache and cache.skeletonMap and cache.skeletonMap[name]
+        -- Explicitly check for false (cached missing) vs nil (not cached)
+        if part == nil then 
+             -- Should rarely happen with the new cache logic, but fallback just in case
+             part = getPartSafe(p.Character, name)
+        end
+        
+        if part and part ~= false and part.Parent then
             local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
             if onScreen then
                  local v2 = Vector2.new(screenPos.X, screenPos.Y)
-                 partPositions[name] = {Pos = v2, OnScreen = true, Occluded = isOccluded(v2)}
+                 local isOcc = false
+                 if menuOpen then
+                     isOcc = isOccluded(v2)
+                 end
+                 partPositions[name] = {Pos = v2, OnScreen = true, Occluded = isOcc}
             else
                  partPositions[name] = {OnScreen = false}
             end
@@ -1028,17 +1049,17 @@ local function updateSkeletonLines(p, lines, outlines)
         local oline = outlines and outlines[i] or nil
 
         if p1Data and p2Data and p1Data.OnScreen and p2Data.OnScreen and not p1Data.Occluded and not p2Data.Occluded then
-            line.Visible = true
+            if not line.Visible then line.Visible = true end
             line.From = p1Data.Pos
             line.To = p2Data.Pos
             if oline then
-                oline.Visible = true
+                if not oline.Visible then oline.Visible = true end
                 oline.From = line.From
                 oline.To = line.To
             end
         else
-            line.Visible = false
-            if oline then oline.Visible = false end
+            if line.Visible then line.Visible = false end
+            if oline and oline.Visible then oline.Visible = false end
         end
     end
 end
@@ -1854,7 +1875,6 @@ local keys = {
     [Enum.KeyCode.Backquote] = "`",
     [Enum.UserInputType.MouseButton1] = "MB1",
     [Enum.UserInputType.MouseButton2] = "MB2",
-    [Enum.UserInputType.MouseButton3] = "MB3",
     [Enum.KeyCode.Escape] = "ESC",
     [Enum.KeyCode.Space] = "SPC",
 }
@@ -1866,7 +1886,7 @@ for _, path in next, library.folders do
 end 
 
 if not isfile("ffff.ttf") then
-    local success, content = pcall(game.HttpGet, game, "https://github.com/colloper/Random/raw/refs/heads/main/WindowsXPTahoma.ttf")
+    local success, content = pcall(game.HttpGet, game, "https://github.com/SecuredProfitss/Fonts/blob/main/WindowsXPTahoma.ttf")
     if success then
         writefile("ffff.ttf", content)
     end
