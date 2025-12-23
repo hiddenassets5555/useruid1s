@@ -65,8 +65,19 @@ local function updateSCPCandidate(descendant, adding)
     if not descendant:IsA("Model") then return end
     local name = string.lower(descendant.Name)
     if string.find(name, "scp") then
+        -- Explicitly allow specific SCPs that might be caught by filters (e.g. "Class" in name)
+        -- Also ensure we don't accidentally include "camera", "base", or "containment" props for these SCPs
+        if (name:find("066") or name:find("023") or name:find("966") or name:find("457") or name:find("999") or name:find("682") or name:find("076")) and not name:find("camera") and not name:find("base") and not name:find("containment") and not name:find("door") and not name:find("cam") and not name:find("room") and not name:find("cell") and not name:find("monitor") then
+             if adding then
+                SCPCandidateCache[descendant] = true
+             else
+                SCPCandidateCache[descendant] = nil
+             end
+             return
+        end
+
         -- Filter out useless visuals (static props, signs, terminals, cameras, etc.)
-        if name:find("sign") or name:find("terminal") or name:find("button") or name:find("door") or name:find("class") or name:find("containment") or name:find("tesla") or name:find("camera") or name:find("bowl") or name:find("cc") or name:find("pipe") or name:find("966") or name:find("299") or name:find("2950") or name:find("066") or name:find("023") or name:find("082") or name:find("180") or name:find("076") then
+        if name:find("sign") or name:find("terminal") or name:find("button") or name:find("door") or name:find("class") or name:find("containment") or name:find("tesla") or name:find("camera") or name:find("bowl") or name:find("cc") or name:find("pipe") or name:find("966") or name:find("299") or name:find("2950") or name:find("082") or name:find("180") then
             if adding then
                 SCPCandidateCache[descendant] = nil -- Ensure it's removed if it was there
             end
@@ -378,8 +389,11 @@ local function LockCameraToTargetPlayer()
         if scpModel and scpModel.Parent then
             local scpName = string.lower(scpModel.Name)
             local allowed = false
-            -- Only matches "SCP-049-2", "SCP-008-2", and "SCP-016-2" variants
-            if scpName:find("scp[%s%-]*049[%s%-]*2") or scpName:find("scp[%s%-]*008[%s%-]*2") or scpName:find("scp[%s%-]*016[%s%-]*2") then
+            -- Allow common SCPs and their variants (049, 008, 016, 096, 173, 002, 076, 682)
+            if (scpName:find("049") or scpName:find("008") or scpName:find("016") or 
+               scpName:find("096") or scpName:find("173") or scpName:find("002") or
+               scpName:find("076") or scpName:find("682"))
+               and not scpName:find("camera") and not scpName:find("monitor") and not scpName:find("cam") and not scpName:find("door") and not scpName:find("sign") and not scpName:find("button") and not scpName:find("terminal") and not scpName:find("tesla") and not scpName:find("gate") and not scpName:find("containment") and not scpName:find("chamber") and not scpName:find("glass") then
                 allowed = true
             end
 
@@ -395,6 +409,12 @@ local function LockCameraToTargetPlayer()
                     local isAlive = true
                     if hum then
                         isAlive = hum.Health > 0
+                    else
+                        -- No humanoid? Check if it's a static prop (anchored)
+                        -- If the part we found is anchored, assume it's a prop (like a camera or sign) and not a target
+                        if part and part.Anchored then
+                             isAlive = false
+                        end
                     end
 
                     if part and isAlive then
@@ -937,6 +957,14 @@ local skeletonConnections = {
     {"RightLowerLeg", "RightFoot"},
 }
 
+local uniqueSkeletonParts = {
+    "Head", "UpperTorso", "LowerTorso",
+    "LeftUpperArm", "LeftLowerArm", "LeftHand",
+    "RightUpperArm", "RightLowerArm", "RightHand",
+    "LeftUpperLeg", "LeftLowerLeg", "LeftFoot",
+    "RightUpperLeg", "RightLowerLeg", "RightFoot"
+}
+
 local function updateSkeletonLines(p, lines, outlines)
     if not p.Character then
         for _, line in ipairs(lines) do
@@ -950,42 +978,63 @@ local function updateSkeletonLines(p, lines, outlines)
         return
     end
 
+    local cache = ESPCache[p]
+    
+    -- Update part cache if character changed
+    if cache and cache.cachedChar ~= p.Character then
+        cache.cachedChar = p.Character
+        cache.skeletonMap = {}
+        for _, name in ipairs(uniqueSkeletonParts) do
+            cache.skeletonMap[name] = getPartSafe(p.Character, name)
+        end
+        cache.rootPart = p.Character:FindFirstChild("HumanoidRootPart") or p.Character:FindFirstChild("Torso") or p.Character:FindFirstChild("UpperTorso")
+    end
+
+    -- Root culling (optimization)
+    local root = cache and cache.rootPart
+    if root and root.Parent then
+        local _, onScreen = camera:WorldToViewportPoint(root.Position)
+        if not onScreen then
+            local dist = (camera.CFrame.Position - root.Position).Magnitude
+            if dist > 60 then
+                for _, line in ipairs(lines) do line.Visible = false end
+                if outlines then for _, line in ipairs(outlines) do line.Visible = false end end
+                return
+            end
+        end
+    end
+
+    -- Optimization: Cache part positions and occlusion status once per frame
+    local partPositions = {}
+    for _, name in ipairs(uniqueSkeletonParts) do
+        local part = cache and cache.skeletonMap and cache.skeletonMap[name] or getPartSafe(p.Character, name)
+        if part and part.Parent then
+            local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
+            if onScreen then
+                 local v2 = Vector2.new(screenPos.X, screenPos.Y)
+                 partPositions[name] = {Pos = v2, OnScreen = true, Occluded = isOccluded(v2)}
+            else
+                 partPositions[name] = {OnScreen = false}
+            end
+        end
+    end
+
     for i, connection in ipairs(skeletonConnections) do
         local p1Name, p2Name = connection[1], connection[2]
-        local p1 = getPartSafe(p.Character, p1Name)
-        local p2 = getPartSafe(p.Character, p2Name)
+        local p1Data = partPositions[p1Name]
+        local p2Data = partPositions[p2Name]
 
         local line = lines[i]
         local oline = outlines and outlines[i] or nil
 
-        
-        if not (p1 and p2) then
-            line.Visible = false
-            if oline then oline.Visible = false end
-            continue
-        end
-
-        local p1Pos, p2Pos = p1.Position, p2.Position
-
-        
-        local p1ScreenPos, p1OnScreen = camera:WorldToViewportPoint(p1Pos)
-        local p2ScreenPos, p2OnScreen = camera:WorldToViewportPoint(p2Pos)
-
-        if p1OnScreen and p2OnScreen then
-            local v1 = Vector2.new(p1ScreenPos.X, p1ScreenPos.Y)
-            local v2 = Vector2.new(p2ScreenPos.X, p2ScreenPos.Y)
-            if isOccluded(v1) or isOccluded(v2) then
-                line.Visible = false
-                if oline then oline.Visible = false end
-            else
-                line.Visible = true
-                line.From = v1
-                line.To = v2
-                if oline then
-                    oline.Visible = true
-                    oline.From = line.From
-                    oline.To = line.To
-                end
+        if p1Data and p2Data and p1Data.OnScreen and p2Data.OnScreen and not p1Data.Occluded and not p2Data.Occluded then
+            line.Visible = true
+            line.From = p1Data.Pos
+            line.To = p2Data.Pos
+            if oline then
+                oline.Visible = true
+                oline.From = line.From
+                oline.To = line.To
             end
         else
             line.Visible = false
@@ -1218,7 +1267,23 @@ run.RenderStepped:Connect(function()
             for d, _ in pairs(SCPCandidateCache) do
                 if d and d.Parent then
                     -- Filter out non-humanoid SCPs (static props that slipped through)
-                    if not d:FindFirstChildOfClass("Humanoid") then
+                    -- Exception for SCP-066, SCP-999, SCP-682, and SCP-076: Allow it if it's NOT anchored (likely the entity, not the camera)
+                    local isExceptionSCP = false
+                    local lowerName = string.lower(d.Name)
+                    if lowerName:find("066") or lowerName:find("999") or lowerName:find("682") or lowerName:find("076") then
+                        local root = d.PrimaryPart or d:FindFirstChild("HumanoidRootPart")
+                        if not root then
+                             for _, ch in ipairs(d:GetChildren()) do
+                                 if ch:IsA("BasePart") then root = ch break end
+                             end
+                        end
+                        -- If it's unanchored, it's likely the entity. If anchored, it's likely the camera.
+                        if root and not root.Anchored then
+                            isExceptionSCP = true
+                        end
+                    end
+
+                    if not d:FindFirstChildOfClass("Humanoid") and not isExceptionSCP then
                         if SCPESPCache[d] then
                             SCPESPCache[d]:Destroy()
                             SCPESPCache[d] = nil
@@ -1281,7 +1346,7 @@ run.RenderStepped:Connect(function()
                         hl.Parent = d
                         SCPESPCache[d] = hl
                     end
-                    if within and flags.toggle_scp_name and SCPESPCache[d] and not SCPNameCache[d] then
+                    if within and (flags.toggle_scp_name or flags.toggle_scp_distance) and SCPESPCache[d] and not SCPNameCache[d] then
                         local adornee = d:FindFirstChild("HumanoidRootPart") or d.PrimaryPart
                         if not adornee then
                             for _, ch in ipairs(d:GetChildren()) do
@@ -1318,8 +1383,48 @@ run.RenderStepped:Connect(function()
                             end
                             local col = RoleColors[teamName] or Color3.fromRGB(255,255,255)
                             tl.TextColor3 = col
-                            tl.Text = d.Name
+                            local lowerName = string.lower(d.Name)
+                            if lowerName:find("966") then
+                                tl.Text = "SCP - 966\nSleep Killer"
+                            elseif lowerName:find("066") then
+                                tl.Text = "SCP - 066\nEric"
+                            elseif lowerName:find("457") then
+                                tl.Text = "SCP - 457\nBurning Man"
+                            elseif lowerName:find("023") then
+                                tl.Text = "SCP - 023\nBlack Shuck"
+                            elseif lowerName:find("173") then
+                                tl.Text = "SCP - 173\nThe Sculpture"
+                            elseif lowerName:find("096") then
+                                tl.Text = "SCP - 096\nThe Shy Guy"
+                            elseif lowerName:find("106") then
+                                tl.Text = "SCP - 106\nThe Old Man"
+                            elseif lowerName:find("049") then
+                                if lowerName:find("2") then
+                                    tl.Text = "SCP - 049-2\nCured"
+                                else
+                                    tl.Text = "SCP - 049\nThe Plague Doctor"
+                                end
+                            elseif lowerName:find("939") then
+                                tl.Text = "SCP - 939\nWith Many Voices"
+                            elseif lowerName:find("076") then
+                                tl.Text = "SCP - 076\nAble"
+                            elseif lowerName:find("035") then
+                                tl.Text = "SCP - 035\nPossessive Mask"
+                            elseif lowerName:find("008") then
+                                tl.Text = "SCP - 008\nZombie"
+                            elseif lowerName:find("682") then
+                                tl.Text = "SCP - 682\nHard-to-Destroy Reptile"
+                            elseif lowerName:find("1048") then
+                                tl.Text = "SCP - 1048\nBuilder Bear"
+                            elseif lowerName:find("002") then
+                                tl.Text = "SCP - 002\nThe Living Room"
+                            elseif lowerName:find("999") then
+                                tl.Text = "SCP - 999\nThe Tickle Monster"
+                            else
+                                tl.Text = d.Name
+                            end
                             SCPNameCache[d] = bb
+                            tl:SetAttribute("BaseText", tl.Text)
                         end
                     end
                 elseif SCPESPCache[d] then
@@ -1342,7 +1447,7 @@ run.RenderStepped:Connect(function()
                     end
                 end
             end
-            if not flags.toggle_scp_name then
+            if not flags.toggle_scp_name and not flags.toggle_scp_distance then
                 for m, bb in pairs(SCPNameCache) do
                     if bb then bb:Destroy() end
                     SCPNameCache[m] = nil
@@ -1357,6 +1462,23 @@ run.RenderStepped:Connect(function()
                 local screenPos, onScreen = camera:WorldToViewportPoint(pos)
                 if onScreen and not isOccluded(Vector2.new(screenPos.X, screenPos.Y)) then
                     bb.Enabled = true
+                    local tl = bb:FindFirstChildOfClass("TextLabel")
+                    if tl then
+                        local base = tl:GetAttribute("BaseText") or tl.Text
+                        local text = ""
+                        if flags.toggle_scp_name then
+                            text = base
+                        end
+                        if flags.toggle_scp_distance then
+                            local dist = math.floor((camera.CFrame.Position - pos).Magnitude)
+                            if text ~= "" then
+                                text = text .. " [" .. dist .. "m]"
+                            else
+                                text = "[" .. dist .. "m]"
+                            end
+                        end
+                        tl.Text = text
+                    end
                 else
                     bb.Enabled = false
                 end
@@ -8416,9 +8538,13 @@ do
             if library.visible_flags["toggle_scp_name"] then
                 library.visible_flags["toggle_scp_name"](v)
             end
+            if library.visible_flags["toggle_scp_distance"] then
+                library.visible_flags["toggle_scp_distance"](v)
+            end
         end
     })
     SCP:toggle({name = "Name", flag = "toggle_scp_name", visible = flags["toggle_scp_esp"]})
+    SCP:toggle({name = "Distance", flag = "toggle_scp_distance", visible = flags["toggle_scp_esp"]})
     ESP:toggle({
         name = "Skeleton",
         flag = "toggle_skeleton_esp",
