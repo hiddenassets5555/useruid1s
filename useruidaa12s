@@ -521,37 +521,48 @@ local function GetBestSilentTarget()
     if not head then
         return nil, nil
     end
-    local best, bd = nil, math.huge
-    local camDir = camera.CFrame.LookVector
     
+    local camDir = camera.CFrame.LookVector
+    local origin = head.Position
+    
+    local bestPart = nil
+    local bestAngle = math.rad((SilentTargetFOV or 65) / 2)
+    
+    local scanParts = {
+        "Head", "UpperTorso", "LowerTorso", "Torso", "HumanoidRootPart",
+        "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm",
+        "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg"
+    }
+
     for _, p in ipairs(players:GetPlayers()) do
-        -- Use ValidateTarget to ensure Team Check (and other checks) are applied exactly like Camlock
         if p ~= lp and ValidateTarget(lp, p) and p.Character and p.Character:FindFirstChild("Humanoid") then
-            local part = getPartSafe(p.Character, selectedPart) or getPartSafe(p.Character, "Head")
-            if part then
-                local dirTo = (part.Position - head.Position).Unit
-                local ang = math.acos(math.clamp(camDir:Dot(dirTo), -1, 1))
-                local maxAng = math.rad((SilentTargetFOV or 65) / 2)
-                
-                if ang <= maxAng then
-                    -- Check visibility INSIDE the loop (like Camlock) to find the best VISIBLE target
-                    -- This prevents the aim from locking onto a wall-obscured player and doing nothing
-                    if PerformLineOfSightCheck(p) then
-                         local dist = (part.Position - head.Position).Magnitude
-                         if dist < bd then
-                             best, bd = p, dist
-                         end
+            -- Scan all valid parts to find the best visible one
+            for _, partName in ipairs(scanParts) do
+                local part = p.Character:FindFirstChild(partName)
+                if part and part:IsA("BasePart") then
+                    local dirTo = (part.Position - origin).Unit
+                    local ang = math.acos(math.clamp(camDir:Dot(dirTo), -1, 1))
+                    
+                    if ang < bestAngle then
+                        -- Check visibility
+                        local rp = RaycastParams.new()
+                        rp.FilterType = Enum.RaycastFilterType.Blacklist
+                        rp.FilterDescendantsInstances = {lp.Character, camera}
+                        
+                        local ray = ws:Raycast(origin, part.Position - origin, rp)
+                        
+                        if not ray or ray.Instance:IsDescendantOf(p.Character) then
+                            bestAngle = ang
+                            bestPart = part
+                        end
                     end
                 end
             end
         end
     end
     
-    if best and best.Character then
-        local th = getPartSafe(best.Character, selectedPart) or getPartSafe(best.Character, "Head")
-        if th then
-            return th, th.Position
-        end
+    if bestPart then
+        return bestPart, bestPart.Position
     end
     return nil, nil
 end
@@ -1771,7 +1782,7 @@ local themes = {
     preset = {
         ["outline"] = hex("#0A0A0A"), 
         ["inline"] = hex("#2D2D2D"), 
-        ["accent"] = rgb(191, 162, 219), 
+        ["accent"] = rgb(191, 191, 244), 
         ["high_contrast"] = hex("#141414"),
         ["low_contrast"] = hex("#1E1E1E"),
         ["text"] = hex("#B4B4B4"),
@@ -5384,6 +5395,22 @@ local config_holder
             local section = setmetatable(cfg, library)
             section:button_holder({})
             section:button({name = "Copy", callback = function()
+                local color = flags[cfg.flag]
+                if type(color) == "table" and color.Color then
+                   color = color.Color
+                end
+                
+                local r = math.floor(color.R * 255)
+                local g = math.floor(color.G * 255)
+                local b = math.floor(color.B * 255)
+                local colorStr = string.format("%d, %d, %d", r, g, b)
+                
+                if setclipboard then
+                    setclipboard(colorStr)
+                elseif toclipboard then
+                    toclipboard(colorStr)
+                end
+
                 library.copied_flag = flags[cfg.flag]
                 library.is_rainbow = cfg.flag .. "_RAINBOW_FLAG"
             end})
@@ -8089,6 +8116,963 @@ do
             spinbotSpeed = v
         end
     })
+
+    do
+        local selfMaterialDivider = library:create("Frame", {
+            Parent = ChecksMisc.holder,
+            Name = "",
+            Size = UDim2.new(1, -8, 0, 2),
+            BorderSizePixel = 0,
+            BackgroundColor3 = themes.preset.accent
+        })
+        library:apply_theme(selfMaterialDivider, "accent", "BackgroundColor3")
+
+        local selfMaterialColor = Color3.fromRGB(191, 191, 244)
+        local selfMaterialConn
+        local selfMaterialParts = {}
+        local lastSelfMaterialColor = nil
+        local function collectSelfMaterialParts(char)
+            table.clear(selfMaterialParts)
+            if not char then return end
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and not part:FindFirstAncestorOfClass("Tool") then
+                    table.insert(selfMaterialParts, part)
+                end
+            end
+        end
+        local function applySelfMaterialOnce()
+            for _, part in ipairs(selfMaterialParts) do
+                if part and part.Parent then
+                    if part.Material ~= Enum.Material.ForceField then
+                        part.Material = Enum.Material.ForceField
+                    end
+                    if part.Color ~= selfMaterialColor then
+                        part.Color = selfMaterialColor
+                    end
+                end
+            end
+        end
+        local selfMaterialToggle = ChecksMisc:toggle({
+            name = "Self Material",
+            flag = "toggle_self_material",
+            default = false,
+            callback = function(v)
+                if v then
+                    if selfMaterialConn then selfMaterialConn:Disconnect() end
+                    local char = PlayersService.LocalPlayer.Character
+                    collectSelfMaterialParts(char)
+                    applySelfMaterialOnce()
+                    -- Keep parts list current without a heavy per-frame loop
+                    selfMaterialConn = char.DescendantAdded:Connect(function(d)
+                        if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" and not d:FindFirstAncestorOfClass("Tool") then
+                            table.insert(selfMaterialParts, d)
+                            if d.Material ~= Enum.Material.ForceField then
+                                d.Material = Enum.Material.ForceField
+                            end
+                            d.Color = selfMaterialColor
+                        end
+                    end)
+                else
+                    if selfMaterialConn then selfMaterialConn:Disconnect() end
+                    selfMaterialConn = nil
+                    
+                    -- Revert logic
+                    local char = PlayersService.LocalPlayer.Character
+                    if char then
+                        for _, part in ipairs(char:GetDescendants()) do
+                            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and not part:FindFirstAncestorOfClass("Tool") then
+                                part.Material = Enum.Material.Plastic
+                                part.Color = Color3.fromRGB(255, 255, 255) -- Reset color base
+                                
+                                -- Try to restore body colors if available
+                                local bodyColors = char:FindFirstChildWhichIsA("BodyColors")
+                                if bodyColors then
+                                    if part.Name == "Head" then
+                                        part.Color = bodyColors.HeadColor3
+                                    elseif part.Name == "LeftArm" or part.Name == "LeftUpperArm" or part.Name == "LeftLowerArm" or part.Name == "LeftHand" then
+                                        part.Color = bodyColors.LeftArmColor3
+                                    elseif part.Name == "RightArm" or part.Name == "RightUpperArm" or part.Name == "RightLowerArm" or part.Name == "RightHand" then
+                                        part.Color = bodyColors.RightArmColor3
+                                    elseif part.Name == "LeftLeg" or part.Name == "LeftUpperLeg" or part.Name == "LeftLowerLeg" or part.Name == "LeftFoot" then
+                                        part.Color = bodyColors.LeftLegColor3
+                                    elseif part.Name == "RightLeg" or part.Name == "RightUpperLeg" or part.Name == "RightLowerLeg" or part.Name == "RightFoot" then
+                                        part.Color = bodyColors.RightLegColor3
+                                    elseif part.Name == "Torso" or part.Name == "UpperTorso" or part.Name == "LowerTorso" then
+                                        part.Color = bodyColors.TorsoColor3
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        })
+        selfMaterialToggle:colorpicker({
+            name = "Material Color",
+            flag = "colorpicker_self_material",
+            color = Color3.fromRGB(191, 191, 244),
+            callback = function(color)
+                selfMaterialColor = color
+                -- Lightweight color apply only when toggle is ON and color changed
+                if library.flags and library.flags["toggle_self_material"] then
+                    if (not lastSelfMaterialColor) or lastSelfMaterialColor ~= selfMaterialColor then
+                        lastSelfMaterialColor = selfMaterialColor
+                        for _, part in ipairs(selfMaterialParts) do
+                            if part and part.Parent then
+                                part.Color = selfMaterialColor
+                            end
+                        end
+                    end
+                end
+            end
+        })
+    end
+
+    do
+        local selfAuraColor = Color3.fromRGB(191, 191, 244)
+        local selfAuraConn
+        local selfAuraCharConn
+        local currentAuraAttachment = nil
+        local lastAuraUpdate = 0
+        local function auraUpdateTick()
+            local now = tick()
+            if now - lastAuraUpdate < (1/30) then return end
+            lastAuraUpdate = now
+            local char = PlayersService.LocalPlayer.Character
+            if char then
+                local target = char:FindFirstChild("HumanoidRootPart")
+                if target then
+                    local att = target:FindFirstChild("TraeSelfAuraAttachment")
+                    if not att then
+                        createAngelWings(char)
+                    else
+                        local cam = workspace.CurrentCamera
+                        if cam then
+                            local _, yRot, _ = cam.CFrame:ToEulerAnglesYXZ()
+                            local tiltCFrame = CFrame.new(0, 0, 0, 0.965, 0.259, 0, -0.259, 0.965, 0, 0, 0, 1)
+                            att.WorldCFrame = CFrame.new(target.Position) * CFrame.Angles(0, yRot, 0) * tiltCFrame
+                        end
+                        local emitter = att:FindFirstChild("ParticleEmitter")
+                        if emitter then
+                            emitter.Color = ColorSequence.new(selfAuraColor)
+                        end
+                    end
+                end
+            end
+        end
+
+        local function createAngelWings(char)
+            if not char then return end
+            local target = char:FindFirstChild("HumanoidRootPart")
+            if not target then return end
+            
+            if target:FindFirstChild("TraeSelfAuraAttachment") then return end
+
+            local attachment = Instance.new("Attachment")
+            attachment.Name = "TraeSelfAuraAttachment"
+            -- Offset to position it at the center of the body (Torso height)
+            attachment.Position = Vector3.new(0, 0, 0) 
+            attachment.Parent = target
+            
+            -- Angel Wings Logic
+            attachment.CFrame = attachment.CFrame * CFrame.new(0, 0, 0, 0.965, 0.259, 0, -0.259, 0.965, 0, 0, 0, 1)
+            attachment.Axis = Vector3.new(0.966, -0.259, 0)
+            attachment.SecondaryAxis = Vector3.new(0.259, 0.966, 0)
+            
+            local particleEmitter = Instance.new("ParticleEmitter")
+            particleEmitter.Name = "ParticleEmitter"
+            particleEmitter.Texture = "rbxassetid://14054635072"
+            particleEmitter.LockedToPart = true
+            particleEmitter.Brightness = 1
+            particleEmitter.LightEmission = 1
+            particleEmitter.LightInfluence = 0
+            particleEmitter.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+            particleEmitter.Size = NumberSequence.new(4)
+            particleEmitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 1)})
+            particleEmitter.Lifetime = NumberRange.new(1)
+            particleEmitter.Rate = 10
+            particleEmitter.Rotation = NumberRange.new(0, 360)
+            particleEmitter.RotSpeed = NumberRange.new(30, 60)
+            particleEmitter.Speed = NumberRange.new(0.01)
+            particleEmitter.SpreadAngle = Vector2.new(0.1)
+            particleEmitter.Color = ColorSequence.new(selfAuraColor)
+            particleEmitter.Parent = attachment
+            
+            currentAuraAttachment = attachment
+        end
+
+        local function removeAngelWings()
+            if currentAuraAttachment then
+                currentAuraAttachment:Destroy()
+                currentAuraAttachment = nil
+            end
+            local char = PlayersService.LocalPlayer.Character
+            if char then
+                for _, v in ipairs(char:GetDescendants()) do
+                    if v.Name == "TraeSelfAuraAttachment" then
+                        v:Destroy()
+                    end
+                end
+            end
+        end
+
+        local selfAuraToggle = ChecksMisc:toggle({
+            name = "Self Aura",
+            flag = "toggle_self_aura",
+            default = false,
+            callback = function(v)
+                if v then
+                    if selfAuraConn then selfAuraConn:Disconnect() end
+                    selfAuraConn = RunService.RenderStepped:Connect(function()
+                        local char = PlayersService.LocalPlayer.Character
+                        if char then
+                            local target = char:FindFirstChild("HumanoidRootPart")
+                            if target then
+                                local att = target:FindFirstChild("TraeSelfAuraAttachment")
+                                if not att then
+                                    createAngelWings(char)
+                                else
+                                    local cam = workspace.CurrentCamera
+                                    if cam then
+                                        local _, yRot, _ = cam.CFrame:ToEulerAnglesYXZ()
+                                        local tiltCFrame = CFrame.new(0, 0, 0, 0.965, 0.259, 0, -0.259, 0.965, 0, 0, 0, 1)
+                                        att.WorldCFrame = CFrame.new(target.Position) * CFrame.Angles(0, yRot, 0) * tiltCFrame
+                                    end
+                                    local emitter = att:FindFirstChild("ParticleEmitter")
+                                    if emitter then
+                                        emitter.Color = ColorSequence.new(selfAuraColor)
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                else
+                    if selfAuraConn then selfAuraConn:Disconnect() end
+                    selfAuraConn = nil
+                    removeAngelWings()
+                end
+            end
+        })
+
+        selfAuraToggle:colorpicker({
+            name = "Aura Color",
+            flag = "colorpicker_self_aura",
+            color = Color3.fromRGB(191, 191, 244),
+            callback = function(color)
+                selfAuraColor = color
+            end
+        })
+    end
+
+    do
+        local toolMaterialType = "Neon"
+        local toolMaterialColor = Color3.fromRGB(191, 191, 244)
+        local toolMaterialConn
+        local toolMaterialDropdown
+        local toolEquipConn, backpackAddConn
+        local toolCharConn
+        local toolDescendantConnMap = {}
+        local function disconnectToolDescendants()
+            for tool, conn in pairs(toolDescendantConnMap) do
+                if conn then conn:Disconnect() end
+                toolDescendantConnMap[tool] = nil
+            end
+        end
+        local function applyToolMaterial(tool)
+            if not tool then return end
+            cacheTool(tool)
+            local mat = Enum.Material.Neon
+            if toolMaterialType == "ForceField" then
+                mat = Enum.Material.ForceField
+            end
+            for _, part in ipairs(tool:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    if part.Material ~= mat then part.Material = mat end
+                    if part.Color ~= toolMaterialColor then part.Color = toolMaterialColor end
+                end
+            end
+            if not toolDescendantConnMap[tool] then
+                toolDescendantConnMap[tool] = tool.DescendantAdded:Connect(function(d)
+                    if d:IsA("BasePart") then
+                        if d.Material ~= mat then d.Material = mat end
+                        if d.Color ~= toolMaterialColor then d.Color = toolMaterialColor end
+                    end
+                end)
+            end
+        end
+        
+        -- Use attributes for caching to survive re-execution
+        local function cacheTool(tool)
+            for _, part in ipairs(tool:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    if not part:GetAttribute("TraeOriginalColor") then
+                        part:SetAttribute("TraeOriginalColor", part.Color)
+                    end
+                    if not part:GetAttribute("TraeOriginalMaterial") then
+                        part:SetAttribute("TraeOriginalMaterial", part.Material.Name)
+                    end
+                end
+            end
+        end
+
+        local selfToolMaterialToggle = ChecksMisc:toggle({
+            name = "Self Tool Material",
+            flag = "toggle_self_tool_material",
+            default = false,
+            callback = function(v)
+                if toolMaterialDropdown then
+                    toolMaterialDropdown.set_element_visible(v)
+                end
+                
+                if v then
+                    if toolEquipConn then toolEquipConn:Disconnect() end
+                    toolEquipConn = nil
+                    if backpackAddConn then backpackAddConn:Disconnect() end
+                    backpackAddConn = nil
+                    if toolCharConn then toolCharConn:Disconnect() end
+                    toolCharConn = nil
+                    if toolMaterialConn then toolMaterialConn:Disconnect() end
+                    toolMaterialConn = RunService.RenderStepped:Connect(function()
+                        local char = PlayersService.LocalPlayer.Character
+                        if char then
+                            local tool = char:FindFirstChildOfClass("Tool")
+                            if tool then
+                                cacheTool(tool)
+                                local mat = Enum.Material.Neon
+                                if toolMaterialType == "ForceField" then
+                                    mat = Enum.Material.ForceField
+                                end
+                                for _, part in ipairs(tool:GetDescendants()) do
+                                    if part:IsA("BasePart") then
+                                        part.Material = mat
+                                        part.Color = toolMaterialColor
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                else
+                    if toolMaterialConn then toolMaterialConn:Disconnect() end
+                    toolMaterialConn = nil
+                    if toolEquipConn then toolEquipConn:Disconnect() end
+                    toolEquipConn = nil
+                    if backpackAddConn then backpackAddConn:Disconnect() end
+                    backpackAddConn = nil
+                    if toolCharConn then toolCharConn:Disconnect() end
+                    toolCharConn = nil
+                    
+                    local function revertTool(tool)
+                        if tool then
+                            for _, part in ipairs(tool:GetDescendants()) do
+                                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                                    -- Try to restore from attributes
+                                    local origColor = part:GetAttribute("TraeOriginalColor")
+                                    local origMat = part:GetAttribute("TraeOriginalMaterial")
+                                    
+                                    if origMat then
+                                        part.Material = Enum.Material[origMat] or Enum.Material.Plastic
+                                        -- Do not clear attribute to preserve original state memory
+                                    else
+                                        part.Material = Enum.Material.Plastic
+                                    end
+                                    
+                                    if origColor then
+                                        part.Color = origColor
+                                        -- Do not clear attribute to preserve original state memory
+                                    else
+                                        -- Fallback: if it looks like our custom color, reset to white
+                                        -- Use fuzzy comparison to handle float precision
+                                        local r_diff = math.abs(part.Color.R - toolMaterialColor.R)
+                                        local g_diff = math.abs(part.Color.G - toolMaterialColor.G)
+                                        local b_diff = math.abs(part.Color.B - toolMaterialColor.B)
+                                        
+                                        if r_diff < 0.01 and g_diff < 0.01 and b_diff < 0.01 then
+                                            part.Color = Color3.new(1, 1, 1)
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                    local char = PlayersService.LocalPlayer.Character
+                    if char then
+                        for _, child in ipairs(char:GetChildren()) do
+                            if child:IsA("Tool") then
+                                revertTool(child)
+                            end
+                        end
+                    end
+                    
+                    local backpack = PlayersService.LocalPlayer:FindFirstChild("Backpack")
+                    if backpack then
+                        for _, child in ipairs(backpack:GetChildren()) do
+                            if child:IsA("Tool") then
+                                revertTool(child)
+                            end
+                        end
+                    end
+                end
+            end
+        })
+
+        toolMaterialDropdown = ChecksMisc:dropdown({
+            name = "Material Type",
+            flag = "dropdown_tool_material_type",
+            items = {"Neon", "ForceField"},
+            default = "Neon",
+            callback = function(v)
+                toolMaterialType = v
+            end
+        })
+        
+        if toolMaterialDropdown then
+            toolMaterialDropdown.set_element_visible(false)
+        end
+        
+        selfToolMaterialToggle:colorpicker({
+             name = "Tool Color",
+             flag = "colorpicker_tool_material",
+             color = Color3.fromRGB(191, 191, 244),
+             callback = function(color)
+                 toolMaterialColor = color
+             end
+        })
+
+        -- Server HRP Visualizer
+        do
+        local visualizerEnabled = false
+        local visualizerClone = nil
+        local visualizerConn = nil
+        local visualizerPhysicsConn = nil
+        local lastSelfMaterialState = false
+        local visualizerStopDelay = nil
+        local lastOptimizationCheck = 0
+        local visualizerLimbCache = {}
+        
+        local visualizerPartCache = {}
+        
+        local function updateServerHRPVisualizer(dt)
+            if not visualizerEnabled then
+                if visualizerClone then
+                    visualizerClone:Destroy()
+                    visualizerClone = nil
+                    visualizerPartCache = {}
+                end
+                return
+            end
+            
+            local lp = PlayersService.LocalPlayer
+            if not lp or not lp.Character then return end
+            local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+
+            -- Check for Self Material state change to sync appearance
+            local currentSelfMaterial = library.flags and library.flags["toggle_self_material"] or false
+            if visualizerClone and lastSelfMaterialState ~= currentSelfMaterial then
+                visualizerClone:Destroy()
+                visualizerClone = nil
+                visualizerPartCache = {}
+            end
+            lastSelfMaterialState = currentSelfMaterial
+            
+            -- Update Visuals (Full Fade In/Out - Faster)
+            local pulse = (math.sin(tick() * 4) + 1) / 2
+
+            -- Check Visibility Conditions
+            local shouldShow = true
+            
+            -- Check if first person
+            local cam = workspace.CurrentCamera
+            local head = lp.Character:FindFirstChild("Head")
+            if cam and head and (cam.CFrame.Position - head.Position).Magnitude < 1.5 then
+                shouldShow = false
+            end
+            
+            -- Check Movement (Stop showing when idle) - REMOVED per request
+            -- (Visualizer will pulse regardless of movement)
+            
+            -- Stop Delay Logic
+            if not shouldShow then
+                if visualizerStopDelay == nil then
+                    visualizerStopDelay = tick() + 1 -- 1 second delay
+                elseif tick() > visualizerStopDelay then
+                    if visualizerClone then
+                        -- Fade out before destroying
+                        local fadeOut = (tick() - visualizerStopDelay) * 2.0
+                        if fadeOut >= 1 then
+                            visualizerClone:Destroy()
+                            visualizerClone = nil
+                            visualizerPartCache = {}
+                            return
+                        else
+                            -- Override pulse for smooth fade out
+                            pulse = math.min(1, fadeOut) 
+                        end
+                    else
+                        return
+                    end
+                end
+            else
+                visualizerStopDelay = nil
+            end
+            
+            -- Update Character Appearance on next fade in (only if normally fading)
+            if shouldShow and pulse > 0.99 then
+                if visualizerClone then
+                    visualizerClone:Destroy()
+                    visualizerClone = nil
+                    visualizerPartCache = {}
+                end
+                return
+            end
+            
+            local trans = pulse -- 0 (visible) to 1 (invisible)
+            
+            -- Create Clone if missing
+                if not visualizerClone then
+                    local char = lp.Character
+                    char.Archivable = true
+                    visualizerClone = char:Clone()
+                    char.Archivable = false
+                    
+                    visualizerClone.Name = "ServerHRPVisualizer"
+                    
+                    -- CONDITIONAL CLEANUP: Only destroy clothes/colors if Self Material is ON
+                    if currentSelfMaterial then
+                        -- Rename Humanoid to prevent it from overriding colors/appearance
+                        local hum = visualizerClone:FindFirstChild("Humanoid")
+                        if hum then
+                            hum.Name = "FakeHumanoid"
+                        end
+                        
+                        for _, child in ipairs(visualizerClone:GetChildren()) do
+                            if child:IsA("BodyColors") or child:IsA("Clothing") or child:IsA("ShirtGraphic") or child:IsA("CharacterMesh") then
+                                child:Destroy()
+                            end
+                        end
+                        
+                        local head = visualizerClone:FindFirstChild("Head")
+                        if head and head:IsA("BasePart") then
+                            for _, ch in ipairs(head:GetChildren()) do
+                                if ch:IsA("Decal") or ch:IsA("Texture") or ch:IsA("SurfaceAppearance") or ch:IsA("WrapLayer") or ch:IsA("WrapTarget") or ch:IsA("FaceControls") then
+                                    ch:Destroy()
+                                end
+                            end
+                            local replacement = Instance.new("Part")
+                            replacement.Name = "GhostHead"
+                            replacement.Size = head.Size
+                            replacement.CFrame = head.CFrame
+                            replacement.Anchored = true
+                            replacement.CanCollide = false
+                            replacement.CanTouch = false
+                            replacement.CanQuery = false
+                            replacement.Massless = true
+                            replacement.Material = Enum.Material.ForceField
+                            local selfMatColor = library.flags and library.flags["colorpicker_self_material"] or Color3.fromRGB(191, 191, 244)
+                            if typeof(selfMatColor) == "table" then
+                                if selfMatColor.Color then
+                                    selfMatColor = selfMatColor.Color
+                                elseif selfMatColor[1] and selfMatColor[2] and selfMatColor[3] then
+                                    selfMatColor = Color3.new(selfMatColor[1], selfMatColor[2], selfMatColor[3])
+                                end
+                            end
+                            replacement.Color = selfMatColor
+                            replacement.Transparency = 1
+                            replacement.LocalTransparencyModifier = 1
+                            local sm = Instance.new("SpecialMesh")
+                            sm.MeshType = Enum.MeshType.Head
+                            sm.Scale = Vector3.new(1.25, 1.25, 1.25)
+                            sm.Parent = replacement
+                            for _, ch in ipairs(head:GetChildren()) do
+                                if ch:IsA("Attachment") or ch:IsA("Weld") or ch:IsA("Motor6D") or ch:IsA("WeldConstraint") then
+                                    ch.Parent = replacement
+                                end
+                            end
+                            replacement.Parent = head.Parent
+                            head:Destroy()
+                        end
+                    end
+                
+                -- Remove any BillboardGuis, Tools, or other UI elements
+                for _, child in ipairs(visualizerClone:GetDescendants()) do
+                    if child:IsA("BillboardGui") or child:IsA("SurfaceGui") or child:IsA("Script") or child:IsA("LocalScript") or child:IsA("Sound") or child:IsA("TouchInterest") then
+                        child:Destroy()
+                    elseif child:IsA("BasePart") then
+                        child.Anchored = true
+                        child.CanCollide = false
+                        child.CanQuery = false
+                        child.CanTouch = false
+                        child.Massless = true
+                        child.CastShadow = false
+                    elseif child:IsA("Humanoid") then
+                        child.DisplayName = " " -- Empty space to force hide
+                        child.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+                        child.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+                        -- Disable all Humanoid physics/states
+                        child.PlatformStand = true
+                        child:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+                        child:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+                        child:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+                        child:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+                        child:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                        child:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+                        child:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+                        child:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
+                        child:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
+                        child:SetStateEnabled(Enum.HumanoidStateType.Flying, false)
+                        child:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
+                        child:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                        child:SetStateEnabled(Enum.HumanoidStateType.Swimming, false)
+                        
+                        -- Remove Animator to prevent physics interference
+                        local animator = child:FindFirstChildOfClass("Animator")
+                        if animator then animator:Destroy() end
+                    end
+                end
+                
+                -- Extra safety: Set RootPriority to minimum
+                if visualizerClone:FindFirstChild("HumanoidRootPart") then
+                    visualizerClone.HumanoidRootPart.RootPriority = -127
+                end
+                
+                -- Capture initial pose and Apply immediately
+                if visualizerClone:FindFirstChild("HumanoidRootPart") then
+                    local visHrp = visualizerClone.HumanoidRootPart
+                    local currentOffsets = {}
+                    for _, part in ipairs(lp.Character:GetChildren()) do
+                         if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                             currentOffsets[part.Name] = hrp.CFrame:Inverse() * part.CFrame
+                         end
+                    end
+                    -- Apply pose
+                    for name, offset in pairs(currentOffsets) do
+                        local vPart = visualizerClone:FindFirstChild(name)
+                        if vPart and vPart:IsA("BasePart") then
+                            vPart.CFrame = visHrp.CFrame * offset
+                        end
+                    end
+                    
+                    -- DO NOT Destroy RootPart, just neutralize it
+                    -- visHrp:Destroy() 
+                end
+                
+                -- FORCE PROPERTIES BEFORE PARENTING
+                -- This is the critical fix. We must ensure no physics exist before it touches Workspace.
+                for _, part in ipairs(visualizerClone:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Anchored = true
+                        part.CanCollide = false
+                        part.CanTouch = false
+                        part.CanQuery = false
+                        part.Massless = true
+                    elseif part:IsA("Humanoid") then
+                        part.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+                        part:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+                        part:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+                        part:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+                        part:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+                        part:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                        part:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+                        part:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+                        part:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
+                        part:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
+                        part:SetStateEnabled(Enum.HumanoidStateType.Flying, false)
+                        part:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
+                        part:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                        part:SetStateEnabled(Enum.HumanoidStateType.Swimming, false)
+                    end
+                end
+                
+                visualizerClone.Parent = workspace
+                visualizerLimbCache = {} 
+                visualizerPartCache = {} 
+             end
+            
+            -- Optimization: Cache parts for physics loop
+            if not visualizerPartCache then visualizerPartCache = {} end
+            
+            -- Refresh cache if empty (new clone)
+            if #visualizerPartCache == 0 and visualizerClone then
+                 for _, part in ipairs(visualizerClone:GetDescendants()) do
+                     if part:IsA("BasePart") then
+                         table.insert(visualizerPartCache, part)
+                     end
+                 end
+            end
+
+            -- Get Self Material settings
+            local currentSelfMaterial = library.flags and library.flags["toggle_self_material"] or false
+            local selfMatColor = library.flags and library.flags["colorpicker_self_material"] or Color3.fromRGB(191, 191, 244)
+            
+            -- Fix: Handle table return from colorpicker
+            if typeof(selfMatColor) == "table" then
+                if selfMatColor.Color then
+                    selfMatColor = selfMatColor.Color
+                elseif selfMatColor[1] and selfMatColor[2] and selfMatColor[3] then
+                    selfMatColor = Color3.new(selfMatColor[1], selfMatColor[2], selfMatColor[3])
+                end
+            end
+            -- Get Self Tool Material flags for visualizer tool parts
+            local toolMaterialEnabled = library.flags and library.flags["toggle_self_tool_material"] or false
+            local toolMatType = library.flags and library.flags["dropdown_tool_material_type"] or "Neon"
+            local toolMatColor = library.flags and library.flags["colorpicker_tool_material"] or Color3.fromRGB(191, 191, 244)
+            if typeof(toolMatColor) == "table" then
+                if toolMatColor.Color then
+                    toolMatColor = toolMatColor.Color
+                elseif toolMatColor[1] and toolMatColor[2] and toolMatColor[3] then
+                    toolMatColor = Color3.new(toolMatColor[1], toolMatColor[2], toolMatColor[3])
+                end
+            end
+
+            for _, part in ipairs(visualizerPartCache) do
+                if part:IsA("BasePart") then
+                    -- Enforce Physics (Double safety)
+                    part.CanCollide = false
+                    part.CanTouch = false
+                    part.CanQuery = false
+                    part.Massless = true
+                    part.Anchored = true
+                    part.LocalTransparencyModifier = trans
+                    
+                    if part.Name ~= "HumanoidRootPart" then
+                        if part.Transparency ~= trans then part.Transparency = trans end
+                        
+                        local isToolPart = (part:FindFirstAncestorOfClass("Tool") ~= nil)
+                        if isToolPart and toolMaterialEnabled then
+                            local desiredMat = (toolMatType == "ForceField") and Enum.Material.ForceField or Enum.Material.Neon
+                            if part.Material ~= desiredMat then part.Material = desiredMat end
+                            if part.Color ~= toolMatColor then part.Color = toolMatColor end
+                        elseif currentSelfMaterial then
+                            if part.Material ~= Enum.Material.ForceField then
+                                part.Material = Enum.Material.ForceField
+                            end
+                            if part.Color ~= selfMatColor then
+                                part.Color = selfMatColor
+                            end
+                            
+                            -- Remove Mesh Texture if present
+                            if part:IsA("MeshPart") then
+                                if part.TextureID ~= "" then part.TextureID = "" end
+                                if part.MaterialVariant ~= "" then part.MaterialVariant = "" end
+                                
+                                if part.Name == "Head" then
+                                    local replacement = Instance.new("Part")
+                                    replacement.Name = "GhostHead"
+                                    replacement.Size = part.Size
+                                    replacement.CFrame = part.CFrame
+                                    replacement.Anchored = true
+                                    replacement.CanCollide = false
+                                    replacement.CanTouch = false
+                                    replacement.CanQuery = false
+                                    replacement.Massless = true
+                                    replacement.Transparency = trans
+                                    replacement.LocalTransparencyModifier = trans
+                                    replacement.Material = Enum.Material.ForceField
+                                    replacement.Color = selfMatColor
+                                    local mesh = Instance.new("SpecialMesh")
+                                    mesh.MeshType = Enum.MeshType.Head
+                                    mesh.Scale = Vector3.new(1.25, 1.25, 1.25)
+                                    mesh.Parent = replacement
+                                    for _, child in ipairs(part:GetChildren()) do
+                                        if child:IsA("Attachment") or child:IsA("Weld") or child:IsA("Motor6D") or child:IsA("WeldConstraint") then
+                                            child.Parent = replacement
+                                        end
+                                    end
+                                    replacement.Parent = part.Parent
+                                    part:Destroy()
+                                end
+                            end
+                            
+                            if part.Name == "Head" or part.Name == "GhostHead" then
+                                for _, ch in ipairs(part:GetChildren()) do
+                                    if ch:IsA("Mesh") then
+                                        ch:Destroy()
+                                    elseif ch:IsA("SpecialMesh") and ch.MeshType == Enum.MeshType.FileMesh then
+                                        ch:Destroy()
+                                    end
+                                end
+                                local hasMesh = false
+                                for _, ch in ipairs(part:GetChildren()) do
+                                    if ch:IsA("SpecialMesh") then
+                                        hasMesh = true
+                                        ch.MeshType = Enum.MeshType.Head
+                                        if ch.TextureId ~= "" then ch.TextureId = "" end
+                                    end
+                                end
+                                if not hasMesh then
+                                    local sm = Instance.new("SpecialMesh")
+                                    sm.MeshType = Enum.MeshType.Head
+                                    sm.Scale = Vector3.new(1.25, 1.25, 1.25)
+                                    sm.Parent = part
+                                end
+                                part.Material = Enum.Material.ForceField
+                                part.Color = selfMatColor
+                                part.Transparency = 1
+                                part.LocalTransparencyModifier = 1
+                            end
+                        end
+                    end
+                elseif part:IsA("Decal") or part:IsA("Texture") then
+                    if currentSelfMaterial then
+                        part:Destroy()
+                    else
+                        if part.Transparency ~= trans then part.Transparency = trans end
+                    end
+                elseif part:IsA("SpecialMesh") then
+                    if currentSelfMaterial then
+                        if part.TextureId ~= "" then part.TextureId = "" end
+                        part.VertexColor = Vector3.new(1, 1, 1) -- Reset vertex color
+                        
+                        -- Force MeshType to Head if it's the Head part
+                        -- FileMeshes do not support Materials (like ForceField), so we must switch to built-in Head
+                        if part.Parent and (part.Parent.Name == "Head" or part.Parent.Name == "GhostHead") then
+                            part.MeshType = Enum.MeshType.Head
+                        end
+                    end
+                elseif part:IsA("Mesh") then
+                    if currentSelfMaterial then
+                        if part.Parent and (part.Parent.Name == "Head" or part.Parent.Name == "GhostHead") then
+                            local p = part.Parent
+                            part:Destroy()
+                            local sm = Instance.new("SpecialMesh")
+                            sm.MeshType = Enum.MeshType.Head
+                            sm.Scale = Vector3.new(1.25, 1.25, 1.25)
+                            sm.Parent = p
+                        else
+                            if part.TextureId ~= "" then part.TextureId = "" end
+                        end
+                    end
+                elseif part:IsA("UnionOperation") then
+                    if currentSelfMaterial then
+                        part.UsePartColor = true -- Ensure Unions use the ForceField color
+                    end
+                elseif part:IsA("SurfaceAppearance") or part:IsA("WrapLayer") or part:IsA("WrapTarget") or part:IsA("FaceControls") then
+                    -- Remove all advanced appearance modifiers
+                    part:Destroy()
+                elseif (part:IsA("BodyColors") or part:IsA("Clothing") or part:IsA("ShirtGraphic") or part:IsA("CharacterMesh")) then
+                    if currentSelfMaterial then
+                        part:Destroy()
+                    end
+                end
+            end
+            
+            -- Delayed Position Update
+            -- local currentCFrame = hrp.CFrame -- Unused now
+            
+            -- Capture current limb offsets for accurate posing
+            -- MOVED: We only capture on creation now to keep it static
+            
+            -- Update Visualizer Position
+            local function moveVisualizer()
+                -- No movement needed, it's static and anchored.
+            end
+
+            -- Apply Movement (Instant call, no delay needed for stationary ghost)
+            -- moveVisualizer() -- Disabled
+        end
+
+        library:apply_theme(library:create("Frame", {
+            Parent = ChecksMisc.holder,
+            Name = "Divider",
+            Size = dim2(1, -20, 0, 1),
+            BorderSizePixel = 0,
+            BackgroundColor3 = themes.preset.accent
+        }), "accent", "BackgroundColor3")
+        ChecksMisc:toggle({
+            name = "Clone Visualizer",
+            flag = "toggle_server_hrp_visualizer",
+            default = false,
+            callback = function(v)
+                visualizerEnabled = v
+                if v then
+                    -- Ensure previous binds are cleared
+                    RunService:UnbindFromRenderStep("ServerHRPVisualizerUpdate")
+                    -- Run as late as possible so our transparency overrides win every frame
+                    RunService:BindToRenderStep("ServerHRPVisualizerUpdate", Enum.RenderPriority.Last.Value, updateServerHRPVisualizer)
+                    visualizerPhysicsConn = RunService.Stepped:Connect(function()
+                        local currentSelfMaterial = library.flags and library.flags["toggle_self_material"] or false
+                        local selfMatColor = library.flags and library.flags["colorpicker_self_material"] or Color3.fromRGB(191, 191, 244)
+                        if typeof(selfMatColor) == "table" then
+                            if selfMatColor.Color then
+                                selfMatColor = selfMatColor.Color
+                            elseif selfMatColor[1] and selfMatColor[2] and selfMatColor[3] then
+                                selfMatColor = Color3.new(selfMatColor[1], selfMatColor[2], selfMatColor[3])
+                            end
+                        end
+                        local toolMaterialEnabled = library.flags and library.flags["toggle_self_tool_material"] or false
+                        local toolMatType = library.flags and library.flags["dropdown_tool_material_type"] or "Neon"
+                        local toolMatColor = library.flags and library.flags["colorpicker_tool_material"] or Color3.fromRGB(191, 191, 244)
+                        if typeof(toolMatColor) == "table" then
+                            if toolMatColor.Color then
+                                toolMatColor = toolMatColor.Color
+                            elseif toolMatColor[1] and toolMatColor[2] and toolMatColor[3] then
+                                toolMatColor = Color3.new(toolMatColor[1], toolMatColor[2], toolMatColor[3])
+                            end
+                        end
+                        local pulse = (math.sin(tick() * 4) + 1) / 2
+                        local trans = pulse
+                        if visualizerPartCache then
+                            for _, part in ipairs(visualizerPartCache) do
+                                if part and part.Parent then
+                                    part.CanCollide = false
+                                    part.CanTouch = false
+                                    part.CanQuery = false
+                                    part.Massless = true
+                                    part.Anchored = true
+                                    if part.Name ~= "HumanoidRootPart" then
+                                        part.Transparency = trans
+                                        part.LocalTransparencyModifier = trans
+                                        local isToolPart = (part:FindFirstAncestorOfClass("Tool") ~= nil)
+                                        if isToolPart and toolMaterialEnabled then
+                                            part.Material = (toolMatType == "ForceField") and Enum.Material.ForceField or Enum.Material.Neon
+                                            part.Color = toolMatColor
+                                        elseif currentSelfMaterial then
+                                            part.Material = Enum.Material.ForceField
+                                            part.Color = selfMatColor
+                                            if part.Name == "Head" or part.Name == "GhostHead" then
+                                                part.Transparency = 1
+                                                part.LocalTransparencyModifier = 1
+                                                local hasSM = false
+                                                for _, ch in ipairs(part:GetChildren()) do
+                                                    if ch:IsA("SpecialMesh") then
+                                                        hasSM = true
+                                                        ch.MeshType = Enum.MeshType.Head
+                                                        ch.TextureId = ""
+                                                    elseif ch:IsA("Mesh") then
+                                                        ch:Destroy()
+                                                    end
+                                                end
+                                                if not hasSM then
+                                                    local sm = Instance.new("SpecialMesh")
+                                                    sm.MeshType = Enum.MeshType.Head
+                                                    sm.Scale = Vector3.new(1.25, 1.25, 1.25)
+                                                    sm.Parent = part
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                else
+                    RunService:UnbindFromRenderStep("ServerHRPVisualizerUpdate")
+                    if visualizerPhysicsConn then visualizerPhysicsConn:Disconnect() end
+                    visualizerPhysicsConn = nil
+                    
+                    if visualizerClone then
+                        visualizerClone:Destroy()
+                        visualizerClone = nil
+                    end
+                    visualizerPartCache = {}
+                end
+            end
+        })
+        end
+        
+    end
+
     spinbotToggle:keybind({
         name = "Spinbot",
         flag = "keybind_spinbot",
@@ -8531,14 +9515,16 @@ do
         end
     })
 
-    local divider = library:create("Frame", {
-        Parent = MiscVisuals.holder,
-        Name = "Divider",
-        Size = UDim2.new(1, 0, 0, 1),
-        BackgroundColor3 = themes.preset.accent,
-        BorderSizePixel = 0
-    })
-    library:apply_theme(divider, "accent", "BackgroundColor3")
+    do
+        local divider = library:create("Frame", {
+            Parent = MiscVisuals.holder,
+            Name = "Divider",
+            Size = UDim2.new(1, 0, 0, 1),
+            BackgroundColor3 = themes.preset.accent,
+            BorderSizePixel = 0
+        })
+        library:apply_theme(divider, "accent", "BackgroundColor3")
+    end
 
     MiscVisuals:slider({
         name = "ESP FPS",
