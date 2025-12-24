@@ -109,7 +109,8 @@ local oldLightingSettings = {
     ClockTime = lighting.ClockTime,
     FogEnd = lighting.FogEnd,
     GlobalShadows = lighting.GlobalShadows,
-    OutdoorAmbient = lighting.OutdoorAmbient
+    OutdoorAmbient = lighting.OutdoorAmbient,
+    Ambient = lighting.Ambient
 }
 
 
@@ -5412,7 +5413,7 @@ local config_holder
                 end
 
                 library.copied_flag = flags[cfg.flag]
-                library.is_rainbow = cfg.flag .. "_RAINBOW_FLAG"
+                library.is_rainbow = flags[cfg.flag .. "_RAINBOW_FLAG"]
             end})
             section:button({name = "Paste", callback = function()
                 RainbowToggle.set(library.is_rainbow)
@@ -7775,23 +7776,48 @@ do
     Checks:toggle({name = "Team", flag = "toggle_team_check", default = true})
     Checks:toggle({name = "Friend", flag = "toggle_friend_check"})
     Checks:toggle({name = "ForceField", flag = "toggle_forcefield_check"})
+
+    local triggerbotConn
+    local triggerbotFiring = false
     ChecksMisc:toggle({
-        name = "Fullbright",
-        flag = "toggle_fullbright",
+        name = "Triggerbot",
+        flag = "toggle_triggerbot",
         default = false,
         callback = function(v)
+            local vim = game:GetService("VirtualInputManager")
             if v then
-                lighting.Brightness = 2
-                lighting.ClockTime = 14
-                lighting.FogEnd = 100000
-                lighting.GlobalShadows = false
-                lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+                if triggerbotConn then triggerbotConn:Disconnect() end
+                triggerbotConn = run.RenderStepped:Connect(function()
+                    local shouldFire = false
+                    local camLockEnabled = library.flags["toggle_camera_lock"]
+                    
+                    if camLockEnabled and CurrentTarget and CurrentTarget.Character then
+                        local hum = CurrentTarget.Character:FindFirstChild("Humanoid")
+                        -- Ensure target is alive (not knocked) and valid according to checks
+                        if hum and hum.Health > 0 and ValidateTarget(lp, CurrentTarget) then
+                            shouldFire = true
+                        end
+                    end
+                    
+                    if shouldFire then
+                        if not triggerbotFiring then
+                            vim:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                            triggerbotFiring = true
+                        end
+                    else
+                        if triggerbotFiring then
+                            vim:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                            triggerbotFiring = false
+                        end
+                    end
+                end)
             else
-                lighting.Brightness = oldLightingSettings.Brightness
-                lighting.ClockTime = oldLightingSettings.ClockTime
-                lighting.FogEnd = oldLightingSettings.FogEnd
-                lighting.GlobalShadows = oldLightingSettings.GlobalShadows
-                lighting.OutdoorAmbient = oldLightingSettings.OutdoorAmbient
+                if triggerbotConn then triggerbotConn:Disconnect() end
+                triggerbotConn = nil
+                if triggerbotFiring then
+                    vim:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                    triggerbotFiring = false
+                end
             end
         end
     })
@@ -8980,7 +9006,7 @@ do
             BackgroundColor3 = themes.preset.accent
         }), "accent", "BackgroundColor3")
         ChecksMisc:toggle({
-            name = "Clone Visualizer",
+            name = "ShadowClone Justsu", -- Clone Visualizer
             flag = "toggle_server_hrp_visualizer",
             default = false,
             callback = function(v)
@@ -9526,16 +9552,77 @@ do
         library:apply_theme(divider, "accent", "BackgroundColor3")
     end
 
-    MiscVisuals:slider({
-        name = "ESP FPS",
-        flag = "slider_esp_fps",
-        suffix = "fps",
-        min = 1, max = 144, default = 60,
+    MiscVisuals:label({name = "World"})
+    MiscVisuals:toggle({
+        name = "Fullbright",
+        flag = "toggle_fullbright",
+        default = false,
         callback = function(v)
-            espUpdateInterval = 1/v
-            skeletonUpdateInterval = 1/v
+            if v then
+                lighting.Brightness = 2
+                lighting.ClockTime = 14
+                lighting.FogEnd = 100000
+                lighting.GlobalShadows = false
+                lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+            else
+                lighting.Brightness = oldLightingSettings.Brightness
+                lighting.ClockTime = oldLightingSettings.ClockTime
+                lighting.FogEnd = oldLightingSettings.FogEnd
+                lighting.GlobalShadows = oldLightingSettings.GlobalShadows
+                lighting.OutdoorAmbient = oldLightingSettings.OutdoorAmbient
+            end
         end
     })
+    local currentAmbientColor = Color3.fromRGB(0, 19, 255)
+    local AmbientToggle = MiscVisuals:toggle({
+        name = "Ambient",
+        flag = "toggle_ambient",
+        default = false,
+        callback = function(v)
+            if v then
+                lighting.Ambient = currentAmbientColor
+            else
+                lighting.Ambient = oldLightingSettings.Ambient
+            end
+        end
+    })
+    AmbientToggle:colorpicker({
+        name = "Ambient Color",
+        flag = "color_ambient",
+        color = currentAmbientColor,
+        callback = function(color)
+            currentAmbientColor = color
+            if library.flags["toggle_ambient"] then
+                lighting.Ambient = color
+            end
+        end
+    })
+
+    local currentOutdoorAmbientColor = Color3.fromRGB(0, 19, 255)
+    local OutdoorAmbientToggle = MiscVisuals:toggle({
+        name = "Outdoor Ambient",
+        flag = "toggle_outdoor_ambient",
+        default = false,
+        callback = function(v)
+            if v then
+                lighting.OutdoorAmbient = currentOutdoorAmbientColor
+            else
+                lighting.OutdoorAmbient = oldLightingSettings.OutdoorAmbient
+            end
+        end
+    })
+    OutdoorAmbientToggle:colorpicker({
+        name = "Outdoor Ambient Color",
+        flag = "color_outdoor_ambient",
+        color = currentOutdoorAmbientColor,
+        callback = function(color)
+            currentOutdoorAmbientColor = color
+            if library.flags["toggle_outdoor_ambient"] then
+                lighting.OutdoorAmbient = color
+            end
+        end
+    })
+
     local ESP, SCP = visualsLeft:multi_section({names = {"ESP", "SCP"}})
     SCP:toggle({
         name = "Highlight", 
