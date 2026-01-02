@@ -3301,7 +3301,7 @@ Aiming.open_tab()
 
     local aimingLeft = Aiming:column()
     local aimingRight = Aiming:column()
-    local Combat, CombatVisuals = aimingLeft:multi_section({names = {"Combat", "Visuals"}})
+    local Combat, CombatVisuals = aimingLeft:multi_section({names = {"Aiming", "Visuals"}})
 
     CombatVisuals:toggle({
         name = "Target HUD", 
@@ -6177,4 +6177,3 @@ run.RenderStepped:Connect(function()
         end
     end
 end)
-
