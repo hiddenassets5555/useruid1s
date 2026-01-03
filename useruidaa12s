@@ -303,9 +303,9 @@ if library.toggle then
 end
 
 -- [MOVED VARIABLES FOR ACCESS]
-local IsCameraLockActive, IsRaycastActive, DeathCheckEnabled = false, false, false
+local IsRaycastActive, DeathCheckEnabled = false, false
 local TargetFOV, selectedPart = 65, "Head"
-local FOVCircle, FOVOutline, CurrentTarget
+local FOVCircle, FOVOutline
 local FOVMiniDots = {}
 local FOVColor, FOVAlpha = Color3.fromRGB(191, 191, 244), 1
 local SilentTargetFOV = 65
@@ -564,8 +564,6 @@ local function RestoreFeatures()
             elseif type(flags[k]) == "table" and flags[k].active ~= nil then
                 flags[k].active = v
             end
-        elseif k == "IsCameraLockActive" then
-             IsCameraLockActive = v
         elseif k == "IsRaycastActive" then
              IsRaycastActive = v
         elseif k == "DeathCheckEnabled" then
@@ -600,7 +598,6 @@ local function DisableFeaturesAndNotify(player, roleName, reasonType)
             end
         end
         -- Save global variables
-        savedFlags["IsCameraLockActive"] = IsCameraLockActive
         savedFlags["IsRaycastActive"] = IsRaycastActive
         savedFlags["DeathCheckEnabled"] = DeathCheckEnabled
         if ESP_SETTINGS then savedFlags["ESP_Enabled"] = ESP_SETTINGS.Enabled end
@@ -622,7 +619,6 @@ local function DisableFeaturesAndNotify(player, roleName, reasonType)
     end
     
     -- Disable global variables
-    IsCameraLockActive = false
     IsRaycastActive = false
     DeathCheckEnabled = false
     if ESP_SETTINGS then ESP_SETTINGS.Enabled = false end
@@ -833,33 +829,7 @@ local function updateDotted(dotsTable, center, radius, color, visible, numDots, 
     end
 end
 
-local function GetBestCamlockTarget()
-    if not lp.Character then return nil, nil, nil end
-    local best, bd = nil, math.huge
-    for _, p in ipairs(players:GetPlayers()) do
-        if p ~= lp and ValidateTarget(lp, p) then
-            local part = getPartSafe(p.Character, selectedPart) or getPartSafe(p.Character, "Head")
-            if part then
-                local sp, on = camera:WorldToViewportPoint(part.Position)
-                if on then
-                    local dist = (Vector2.new(sp.X, sp.Y) - Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)).Magnitude
-                    if dist < TargetFOV * 5 and dist < bd then
-                        if PerformLineOfSightCheck(p) then
-                            best, bd = p, dist
-                        end
-                    end
-                end
-            end
-        end
-    end
-    if best and best.Character then
-        local tp = getPartSafe(best.Character, selectedPart) or getPartSafe(best.Character, "Head")
-        if tp then
-            return tp, tp.Position, best
-        end
-    end
-    return nil, nil, nil
-end
+
 
 local function getPartSafe(char, name)
     if not char then return nil end
@@ -979,136 +949,9 @@ local function PerformLineOfSightCheck(target)
     return false
 end
 
-local function LockCameraToTargetPlayer()
-    if not lp.Character then
-        CurrentTarget = nil
-        return
-    end
 
-    if flags.toggle_required_weapon then
-        local tool = lp.Character:FindFirstChildOfClass("Tool")
-        if not tool then
-            CurrentTarget = nil
-            return
-        end
-    end
 
-    if flags.toggle_sticky_lock and CurrentTarget then
-        local ct = CurrentTarget
-        local ch = ct
-        if ct:IsA("Player") then ch = ct.Character end
-        
-        if ch then
-            local hum = ch:FindFirstChildOfClass("Humanoid")
-            local isAlive = true
-            if hum then isAlive = hum.Health > 0 end
 
-            if isAlive then
-                local tp = getPartSafe(ch, selectedPart) or ch.PrimaryPart or ch:FindFirstChild("Head") or ch:FindFirstChild("HumanoidRootPart")
-                if not tp then
-                     for _, child in ipairs(ch:GetChildren()) do
-                         if child:IsA("BasePart") then tp = child break end
-                     end
-                end
-
-                if tp then
-                    local cf = camera.CFrame
-                    local predictedPos = tp.Position
-                    camera.CFrame = CFrame.new(cf.Position, predictedPos)
-                    return
-                end
-            end
-        end
-        CurrentTarget = nil
-    end
-
-    local best, bd = nil, math.huge
-    for _, p in ipairs(players:GetPlayers()) do
-        if p ~= lp and ValidateTarget(lp, p) then
-            local part = getPartSafe(p.Character, selectedPart)
-            if part then
-                local sp, on = camera:WorldToViewportPoint(part.Position)
-                if on then
-                    local dist = (Vector2.new(sp.X, sp.Y) - Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)).Magnitude
-                    if dist < TargetFOV * 5 and dist < bd then
-                        if PerformLineOfSightCheck(p) then
-                            best, bd = p, dist
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    -- Built-in SCP check (always active)
-    for scpModel, _ in pairs(SCPCandidateCache) do
-        if scpModel and scpModel.Parent then
-            local scpName = string.lower(scpModel.Name)
-            local allowed = false
-            -- Allow common SCPs and their variants (049, 008, 016, 096, 173, 002, 076, 682)
-            if (scpName:find("049") or scpName:find("008") or scpName:find("016") or 
-               scpName:find("096") or scpName:find("173") or scpName:find("002") or
-               scpName:find("076") or scpName:find("682"))
-               and not scpName:find("camera") and not scpName:find("monitor") and not scpName:find("cam") and not scpName:find("door") and not scpName:find("sign") and not scpName:find("button") and not scpName:find("terminal") and not scpName:find("tesla") and not scpName:find("gate") and not scpName:find("containment") and not scpName:find("chamber") and not scpName:find("glass") then
-                allowed = true
-            end
-
-            if allowed then
-                    local part = getPartSafe(scpModel, selectedPart) or scpModel.PrimaryPart or scpModel:FindFirstChild("HumanoidRootPart")
-                    if not part then
-                        for _, ch in ipairs(scpModel:GetChildren()) do
-                            if ch:IsA("BasePart") then part = ch break end
-                        end
-                    end
-
-                    local hum = scpModel:FindFirstChildOfClass("Humanoid")
-                    local isAlive = true
-                    if hum then
-                        isAlive = hum.Health > 0
-                    else
-                        -- No humanoid? Check if it's a static prop (anchored)
-                        -- If the part we found is anchored, assume it's a prop (like a camera or sign) and not a target
-                        if part and part.Anchored then
-                             isAlive = false
-                        end
-                    end
-
-                    if part and isAlive then
-                        local sp, on = camera:WorldToViewportPoint(part.Position)
-                        if on then
-                            local dist = (Vector2.new(sp.X, sp.Y) - Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)).Magnitude
-                            if dist < TargetFOV * 5 and dist < bd then
-                                if PerformLineOfSightCheck(scpModel) then
-                                    best, bd = scpModel, dist
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-
-    if best then
-        local char = best
-        if best:IsA("Player") then char = best.Character end
-
-        local tp = getPartSafe(char, selectedPart) or char.PrimaryPart or char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
-        if tp then
-            local predictedPos = tp.Position
-
-            local cf = camera.CFrame
-            local targetLook = CFrame.new(cf.Position, predictedPos)
-            camera.CFrame = CFrame.new(cf.Position, predictedPos)
-            CurrentTarget = best
-            return
-        end
-    end
-    CurrentTarget = nil
-end
-
-local function SinkInput()
-    return Enum.ContextActionResult.Sink
-end
 
 
 
@@ -1192,16 +1035,32 @@ do
     end 
 
     local function getPredictedHeadPosition(player)
-        local head = player:FindFirstChild("Head")
-        local humanoidRootPart = player:FindFirstChild("HumanoidRootPart")
+        local char = player
+        if player:IsA("Player") then char = player.Character end
+        if not char then return nil end
 
-        if not head or not humanoidRootPart then
-            return head and head.Position or nil
+        local part = getPartSafe(char, selectedPart) 
+        if not part then part = char:FindFirstChild("Head") end
+        if not part then part = char:FindFirstChild("HumanoidRootPart") end
+        if not part then part = char.PrimaryPart end
+        
+        if not part then
+             for _, ch in ipairs(char:GetChildren()) do
+                 if ch:IsA("BasePart") then part = ch break end
+             end
         end
 
-        local predictionAmount = 0 -- Default from silent.txt
-        local velocity = humanoidRootPart.Velocity
-        local predictedPosition = head.Position + (velocity * predictionAmount)
+        if not part then return nil end
+
+        local humanoidRootPart = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
+
+        local predictionAmount = 0 
+        local velocity = Vector3.new(0,0,0)
+        if humanoidRootPart and humanoidRootPart:IsA("BasePart") then
+             velocity = humanoidRootPart.Velocity
+        end
+
+        local predictedPosition = part.Position + (velocity * predictionAmount)
 
         return predictedPosition
     end
@@ -1255,6 +1114,64 @@ do
                 closestDistance = distance 
             end 
         end 
+
+        -- SCP Logic (Adapted from Camera Lock)
+        for scpModel, _ in pairs(SCPCandidateCache) do
+            if scpModel and scpModel.Parent then
+                local scpName = string.lower(scpModel.Name)
+                local allowed = false
+                -- Allow common SCPs and their variants
+                if (scpName:find("049") or scpName:find("008") or scpName:find("016") or 
+                   scpName:find("096") or scpName:find("173") or scpName:find("002") or
+                   scpName:find("076") or scpName:find("682"))
+                   and not scpName:find("camera") and not scpName:find("monitor") and not scpName:find("cam") and not scpName:find("door") and not scpName:find("sign") and not scpName:find("button") and not scpName:find("terminal") and not scpName:find("tesla") and not scpName:find("gate") and not scpName:find("containment") and not scpName:find("chamber") and not scpName:find("glass") then
+                    allowed = true
+                end
+
+                if allowed then
+                    local part = getPartSafe(scpModel, selectedPart) or scpModel.PrimaryPart or scpModel:FindFirstChild("HumanoidRootPart")
+                    if not part then
+                        for _, ch in ipairs(scpModel:GetChildren()) do
+                            if ch:IsA("BasePart") then part = ch break end
+                        end
+                    end
+
+                    local hum = scpModel:FindFirstChildOfClass("Humanoid")
+                    local isAlive = true
+                    if hum then
+                        isAlive = hum.Health > 0
+                    else
+                        if part and part.Anchored then
+                             isAlive = false
+                        end
+                    end
+
+                    if part and isAlive then
+                        -- For Silent Aim, we need the head/target position
+                        -- Using the part we found (usually Root or Head) as the target
+                        local targetPos = part.Position
+                        
+                        -- Apply prediction if needed (simplified for SCPs as they might not have velocity)
+                        -- if hum and hum.RootPart then targetPos = targetPos + hum.RootPart.Velocity * predictionAmount end
+
+                        local position, onScreen = camera:WorldToViewportPoint(targetPos)
+                        if onScreen then
+                            local screenPoint = Vector2.new(position.X, position.Y)
+                            local distance = (center - screenPoint).Magnitude
+                            
+                            if distance <= fovRadius and distance < closestDistance then
+                                if flags.toggle_raycast and not PerformLineOfSightCheck(scpModel) then
+                                    -- Skip if wall check fails
+                                else
+                                    closest = scpModel
+                                    closestDistance = distance
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
         
         CachedSilentTarget = closest
         getgenv().SilentAimTarget = closest
@@ -1262,7 +1179,7 @@ do
 
     -- Run target update loop
     run.Heartbeat:Connect(function()
-        local shouldUpdate = flags.toggle_silent and not IsCameraLockActive
+        local shouldUpdate = flags.toggle_silent
 
         -- Enforce required weapon check always for silent aim
         if shouldUpdate then
@@ -1295,7 +1212,7 @@ do
             local method = getnamecallmethod()
 
             -- Activation logic from Script.txt
-            local silentEnabled = flags.toggle_silent and not IsCameraLockActive
+            local silentEnabled = flags.toggle_silent
 
             if method == "Raycast" and (self == ws or tostring(self) == "Workspace") and silentEnabled and not checkcaller() then
                 -- Enforce required weapon check always for silent aim
@@ -1358,25 +1275,7 @@ local function EnableCameraSilentAim()
                     end
                end
             end
-            if typeof(self) == "Instance" and not __silentIndexBusy then
-                if (flags.toggle_silent_camlock or false)
-                    and self == ws.CurrentCamera
-                    and (key == "CFrame" or key == "Focus")
-                    and ((flags.keybind_camera_lock and flags.keybind_camera_lock.active) or (flags.toggle_auto_aim and uis:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) and flags.keybind_camera_lock and flags.keybind_camera_lock.key == Enum.UserInputType.MouseButton2) or false)
-                then
-                    __silentIndexBusy = true
-                    local targetPart, targetPos = GetBestCamlockTarget()
-                    __silentIndexBusy = false
-                    if targetPart and targetPos then
-                        local base = original(self, key)
-                        if typeof(base) == "CFrame" then
-                            return CFrame.new(base.Position, targetPos)
-                        end
-                        return base
-                    end
 
-                end
-            end
             return original(self, key)
         end
         
@@ -1753,7 +1652,6 @@ local lastEspUpdate = 0
 local espUpdateInterval = 1/30
 local lastTextUpdate = 0
 local textUpdateInterval = 1/15
-local wasLocked = false
 
 
 local function HideBronxESP(p)
@@ -2135,48 +2033,8 @@ run.RenderStepped:Connect(function()
     ESP_SETTINGS.Enabled = flags.esp_enabled_dummy
 
     
-     local lockKeyActive
-    if flags.toggle_auto_aim then
-        lockKeyActive = uis:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
-    else
-        lockKeyActive = flags.keybind_camera_lock and flags.keybind_camera_lock.active
-    end
-
-    local isLocked = flags.toggle_camera_lock and not (flags.toggle_silent_camlock or false) and lockKeyActive
-
-    if isLocked then
-        -- Force disable Silent Aim if it's on
-        if flags.toggle_silent then
-            if library.config_flags["toggle_silent"] then
-                -- Avoid recursive loop if already setting
-                if not library.silent_aim_setting_in_progress then
-                     library.silent_aim_setting_in_progress = true
-                     library.config_flags["toggle_silent"](false)
-                     library.silent_aim_setting_in_progress = false
-                end
-            end
-        end
-
-        LockCameraToTargetPlayer()
-        if CurrentTarget then
-            if not wasLocked then
-                cas:BindAction("CamLockInputSink", SinkInput, false, Enum.UserInputType.MouseMovement, Enum.UserInputType.Touch, Enum.UserInputType.Gamepad1, Enum.UserInputType.Gamepad2)
-                wasLocked = true
-            end
-        else
-            if wasLocked then
-                cas:UnbindAction("CamLockInputSink")
-                wasLocked = false
-            end
-        end
-    else
-        if wasLocked then
-            cas:UnbindAction("CamLockInputSink")
-            wasLocked = false
-        end
-        clearHighlight()
-        CurrentTarget = nil
-    end
+    -- Camera Lock Render Logic Removed
+    clearHighlight()
 
 
 
@@ -2210,7 +2068,7 @@ run.RenderStepped:Connect(function()
     end
 
     if SilentFOVCircle then
-        local visible = not library.menu_open and not isLocked
+        local visible = not library.menu_open
         local dotted = flags.toggle_dotted_fov_silent
         if visible and dotted then
             SilentFOVCircle.Visible = false
@@ -2793,16 +2651,9 @@ run.RenderStepped:Connect(function()
                                     else
                                         if isLocated and modTagText and roleText then
                                             local breathe = 0.5 + (0.5 * math.sin(tick() * 5))
-                                            local lineSpacing = ts + 2
                                             
-                                            -- 1. [Moderator] (Yellow)
-                                            modTagText.Text = "[Moderator]"
-                                            modTagText.Color = Color3.new(1, 1, 0)
-                                            modTagText.Transparency = breathe
-                                            modTagText.Font = font
-                                            modTagText.Size = ts
-                                            modTagText.Position = nPos
-                                            modTagText.Visible = true
+                                            -- 1. [Moderator] (Yellow) -> REMOVED
+                                            modTagText.Visible = false
 
                                             -- Apply same breathing to Corner Boxes (BronxESPCache)
                                             if BronxESPCache[p] then
@@ -2817,40 +2668,16 @@ run.RenderStepped:Connect(function()
                                                 b.BottomRightDown.BackgroundTransparency = 1 - breathe
                                             end
                                             
-                                            -- Distance (Yellow, Solid)
+                                            -- Distance (Yellow, Solid) -> REMOVED
                                             if distText then
-                                                 local offset = 11 * ts * 0.7 -- Fallback approximation
-                                                 if modTagText.TextBounds and modTagText.TextBounds.X > 0 then
-                                                     offset = modTagText.TextBounds.X
-                                                 end
-                                                 
-                                                 distText.Text = "[" .. tostring(math.floor(dist)) .. "m]"
-                                                 distText.Color = Color3.new(1, 1, 0)
-                                                 distText.Transparency = 1
-                                                 distText.Font = font
-                                                 distText.Size = ts
-                                                 distText.Position = Vector2.new(nPos.X + offset + 4, nPos.Y)
-                                                 distText.Visible = true
+                                                 distText.Visible = false
                                             end
                                             
-                                            -- 2. Username (White)
-                                            nameText.Text = p.Name
-                                            nameText.Color = Color3.new(1, 1, 1)
-                                            nameText.Transparency = 1
-                                            nameText.Font = font
-                                            nameText.Size = ts
-                                            nameText.Position = Vector2.new(nPos.X, nPos.Y + lineSpacing)
-                                            nameText.Visible = true
+                                            -- 2. Username (White) -> REMOVED
+                                            nameText.Visible = false
                                             
-                                            -- 3. Role (White)
-                                            local role = activeStaffRoles[p] or "Unknown"
-                                            roleText.Text = role
-                                            roleText.Color = Color3.new(1, 0, 0)
-                                            roleText.Transparency = 1
-                                            roleText.Font = font
-                                            roleText.Size = ts
-                                            roleText.Position = Vector2.new(nPos.X, nPos.Y + lineSpacing * 2)
-                                            roleText.Visible = true
+                                            -- 3. Role (White) -> REMOVED
+                                            roleText.Visible = false
                                         else
                                             if modTagText then modTagText.Visible = false end
                                             if roleText then roleText.Visible = false end
@@ -3287,7 +3114,7 @@ local concat = table.concat
 
 
 
-local window = library:window({name = os.date('Home'), size = dim2(0, 567, 0, 580)})
+local window = library:window({name = os.date('Home | UiBind - Z'), size = dim2(0, 567, 0, 580)})
 
 local Aiming = window:tab({name = "Combat"})
 local Players = window:tab({name = "Players"})
@@ -4058,146 +3885,13 @@ Aiming.open_tab()
 
 
     do
-    local camLockToggle = Combat:toggle({name = "Camera Lock", flag = "toggle_camera_lock"})
-    camLockToggle:keybind({
-        name = "Camera Lock",
-        flag = "keybind_camera_lock",
-        key = Enum.UserInputType.MouseButton2,
-        mode = "hold",
-        default = false
-    })
 
-    Combat:toggle({name = "Sticky", flag = "toggle_sticky_lock"})
-    
-    local fovSlider
-    local DottedToggle
-    local DottedDivider
-    local RequiredWeaponToggle
-    local fovToggle = Combat:toggle({
-        name = "FOV Visible",
-        flag = "toggle_fov_circle",
-        default = false,
-        callback = function(v)
-            if v then
-                FOVCircle = createDraw("Circle", {
-                    Thickness = 0.5,
-                    NumSides = 64,
-                    Color = FOVColor,
-                    Transparency = FOVAlpha,
-                    Filled = false,
-                    Visible = true
-                })
-                FOVOutline = createDraw("Circle", {
-                    Thickness = 4,
-                    NumSides = 64,
-                    Color = Color3.fromRGB(0,0,0),
-                    Transparency = 0,
-                    Filled = false,
-                    Visible = true
-                })
-            else
-                if FOVCircle then
-                    FOVCircle:Remove()
-                    FOVCircle = nil
-                end
-                if FOVOutline then
-                    FOVOutline:Remove()
-                    FOVOutline = nil
-                end
-            end
-            if fovSlider then
-                fovSlider.set_element_visible(v)
-            end
-            if DottedToggle then
-                DottedToggle.set_element_visible(v)
-            end
-            if DottedDivider then
-                DottedDivider.Visible = v
-            end
-            if RequiredWeaponToggle then
-                RequiredWeaponToggle.set_element_visible(v)
-            end
-        end
-    })
-    DottedDivider = library:create("Frame", {
-        Parent = Combat.holder,
-        Name = "DottedDivider",
-        Size = UDim2.new(1, -8, 0, 2),
-        BorderSizePixel = 0,
-        BackgroundColor3 = Color3.fromRGB(45, 45, 45),
-        Visible = false
-    })
-    -- library:apply_theme(DottedDivider, "accent", "BackgroundColor3")
-    RequiredWeaponToggle = Combat:toggle({
-        name = "Required Weapon",
-        flag = "toggle_required_weapon",
-        default = false,
-        callback = function(v) end
-    })
-    RequiredWeaponToggle.set_element_visible(false)
-    DottedToggle = Combat:toggle({
-        name = "Dotted",
-        flag = "toggle_dotted_fov",
-        default = false,
-        callback = function(v) end
-    })
-    DottedToggle.set_element_visible(false)
-    fovToggle:colorpicker({
-        name = "FOV Color",
-        flag = "colorpicker_fov_circle",
-        color = Color3.fromRGB(255,255,255),
-        callback = function(color, alpha)
-            FOVColor = color or Color3.fromRGB(255,255,255)
-            FOVAlpha = alpha or 1
-            if FOVCircle then
-                FOVCircle.Color = FOVColor
-                FOVCircle.Transparency = FOVAlpha
-            end
-        end
-    })
-    fovSlider = Combat:slider({
-        name = "FOV Radius",
-        flag = "slider_fov",
-        suffix = "m",
-        min = 5, max = 100, default = 45,
-        callback = function(v)
-            TargetFOV = v
-            if FOVCircle then
-                FOVCircle.Radius = v * 5
-            end
-            if FOVOutline then
-                FOVOutline.Radius = (v * 5) + 4
-            end
-        end
-    })
-    fovSlider.set_element_visible(false)
-    Combat:dropdown({
-        name = "Aim Part",
-        flag = "dropdown_aim_part",
-        items = {"Head", "Torso"},
-        default = "Head",
-        callback = function(v)
-            selectedPart = (v == "Torso") and "UpperTorso" or "Head"
-        end
-    })
-    local divider = library:create("Frame", {
-        Parent = Combat.holder,
-        Name = "",
-        Size = UDim2.new(1, -8, 0, 2),
-        BorderSizePixel = 0,
-        BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    })
+
     local silentToggle = Combat:toggle({
         name = "Silent", 
         flag = "toggle_silent", 
         callback = function(v)
-            if v and IsCameraLockActive then
-                 -- Force disable if camera lock is active
-                 library.flags.toggle_silent = false
-                 if library.options["toggle_silent"] then
-                     library.options["toggle_silent"].set_state(false)
-                 end
-            end
+            -- No logic needed
         end
     })
     
@@ -4303,52 +3997,7 @@ Aiming.open_tab()
     Checks:toggle({name = "Friend", flag = "toggle_friend_check"})
     Checks:toggle({name = "ForceField", flag = "toggle_forcefield_check"})
 
-    do
-    local triggerbotConn
-    local triggerbotFiring = false
-    ChecksMisc:toggle({
-        name = "Triggerbot",
-        flag = "toggle_triggerbot",
-        default = false,
-        callback = function(v)
-            local vim = game:GetService("VirtualInputManager")
-            if v then
-                if triggerbotConn then triggerbotConn:Disconnect() end
-                triggerbotConn = run.RenderStepped:Connect(function()
-                    local shouldFire = false
-                    local camLockEnabled = library.flags["toggle_camera_lock"]
-                    
-                    if camLockEnabled and CurrentTarget and CurrentTarget.Character then
-                        local hum = CurrentTarget.Character:FindFirstChild("Humanoid")
-                        -- Ensure target is alive (not knocked) and valid according to checks
-                        if hum and hum.Health > 0 and ValidateTarget(lp, CurrentTarget) then
-                            shouldFire = true
-                        end
-                    end
-                    
-                    if shouldFire then
-                        if not triggerbotFiring then
-                            vim:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                            triggerbotFiring = true
-                        end
-                    else
-                        if triggerbotFiring then
-                            vim:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                            triggerbotFiring = false
-                        end
-                    end
-                end)
-            else
-                if triggerbotConn then triggerbotConn:Disconnect() end
-                triggerbotConn = nil
-                if triggerbotFiring then
-                    vim:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                    triggerbotFiring = false
-                end
-            end
-        end
-    })
-    end
+
 
 
     
