@@ -1902,13 +1902,23 @@ local function UpdateBronxESP(p)
         b.Chams.FillColor = getColor(flags.esp_chams_c1, Color3.new(1,0,0))
         b.Chams.OutlineColor = getColor(flags.esp_chams_c2, Color3.new(1,1,1))
         
+        local fillTrans = 0.5
+        if type(flags.esp_chams_c1) == "table" and flags.esp_chams_c1.Transparency then
+            fillTrans = 1 - flags.esp_chams_c1.Transparency
+        end
+        
+        local outlineTrans = 0
+        if type(flags.esp_chams_c2) == "table" and flags.esp_chams_c2.Transparency then
+            outlineTrans = 1 - flags.esp_chams_c2.Transparency
+        end
+
         if flags.esp_chams_thermal then
             local breathe = math.abs(math.sin(tick() * 2))
-            b.Chams.FillTransparency = 0.5 * breathe
-            b.Chams.OutlineTransparency = 0.5 * breathe -- Apply breathing to outline too for full effect
+            b.Chams.FillTransparency = fillTrans * breathe
+            b.Chams.OutlineTransparency = outlineTrans * breathe
         else
-            b.Chams.FillTransparency = 0.5
-            b.Chams.OutlineTransparency = 0
+            b.Chams.FillTransparency = fillTrans
+            b.Chams.OutlineTransparency = outlineTrans
         end
     else
         b.Chams.Enabled = false
@@ -3128,7 +3138,7 @@ Aiming.open_tab()
 
     local aimingLeft = Aiming:column()
     local aimingRight = Aiming:column()
-    local Combat, CombatVisuals = aimingLeft:multi_section({names = {"Aiming", "Visuals"}})
+    local Combat, CombatVisuals = aimingLeft:multi_section({names = {"Silent", "Visuals"}})
 
     CombatVisuals:toggle({
         name = "Target HUD", 
@@ -3196,7 +3206,7 @@ Aiming.open_tab()
         visualizeDesync:colorpicker({
             name = "Visualize Color",
             flag = "desync_visualize_color",
-            color = Color3.fromRGB(191, 191, 244)
+            color = Color3.fromRGB(227, 144, 191)
         })
         
         -- Forward declaration for sliders
@@ -3888,7 +3898,7 @@ Aiming.open_tab()
 
 
     local silentToggle = Combat:toggle({
-        name = "Silent", 
+        name = "Enable", 
         flag = "toggle_silent", 
         callback = function(v)
             -- No logic needed
@@ -3908,7 +3918,7 @@ Aiming.open_tab()
                 SilentFOVCircle = createDraw("Circle", {
                     Thickness = 0.5,
                     NumSides = 64,
-                    Color = SilentFOVColor or Color3.fromRGB(255,255,255),
+                    Color = SilentFOVColor or Color3.fromRGB(227, 144, 191),
                     Transparency = SilentFOVAlpha or 1,
                     Filled = false,
                     Visible = true
@@ -3964,9 +3974,9 @@ Aiming.open_tab()
     silentFovToggle:colorpicker({
         name = "FOV Color",
         flag = "colorpicker_fov_circle_silent",
-        color = Color3.fromRGB(255,255,255),
+        color = Color3.fromRGB(227, 144, 191),
         callback = function(color, alpha)
-            SilentFOVColor = color or Color3.fromRGB(255,255,255)
+            SilentFOVColor = color or Color3.fromRGB(227, 144, 191)
             SilentFOVAlpha = alpha or 1
             if SilentFOVCircle then
                 SilentFOVCircle.Color = SilentFOVColor
@@ -4586,8 +4596,8 @@ Aiming.open_tab()
     })
 
     local chams = ESP:toggle({name = "Chams", flag = "esp_chams_dummy", default = false, callback = function() end})
-    chams:colorpicker({flag = "esp_chams_c1", color = Color3.fromRGB(100, 100, 255), callback = function() end})
-    chams:colorpicker({flag = "esp_chams_c2", color = Color3.new(0, 0, 0), callback = function() end})
+    chams:colorpicker({flag = "esp_chams_c1", color = Color3.fromRGB(100, 100, 255), alpha = 0.5, callback = function() end})
+    chams:colorpicker({flag = "esp_chams_c2", color = Color3.new(0, 0, 0), alpha = 1, callback = function() end})
     
     local healthNum = ESP:toggle({name = "Health Text", flag = "esp_health_num_dummy", default = false, callback = function() end})
     healthNum:colorpicker({flag = "esp_health_num_c1", color = Color3.new(1,1,1), callback = function() end})
@@ -4638,7 +4648,7 @@ Aiming.open_tab()
             local PlayerSection = visualsLeft:section({name = "Player"})
             
             -- Wind Aura Logic
-            local visualsAuraColor1 = Color3.fromRGB(191, 191, 244)
+            local visualsAuraColor1 = Color3.fromRGB(227, 144, 191)
             local currentVisualsAuraAttachment = nil
             local visualsAuraConn = nil
             local lastVisualsAuraUpdate = 0
@@ -4749,7 +4759,7 @@ Aiming.open_tab()
                         removeVisualsAura()
                     end
                 end})
-                aura:colorpicker({flag = "visuals_aura_color1", color = Color3.fromRGB(191, 191, 244), callback = function(c) visualsAuraColor1 = c end})
+                aura:colorpicker({flag = "visuals_aura_color1", color = Color3.fromRGB(227, 144, 191), callback = function(c) visualsAuraColor1 = c end})
             end
             
             PlayerSection:dropdown({
@@ -4775,7 +4785,7 @@ Aiming.open_tab()
             -- Self Material
             do
                 local PlayersService = game:GetService("Players")
-                local selfMaterialColor = Color3.fromRGB(191, 191, 244)
+                local selfMaterialColor = Color3.fromRGB(227, 144, 191)
                 local selfMaterialConn
                 local selfMaterialRespawnConn
                 local selfMaterialLoop = nil -- Loop for brute-forcing color
@@ -4909,7 +4919,7 @@ Aiming.open_tab()
                 selfMaterialToggle:colorpicker({
                     name = "Material Color",
                     flag = "colorpicker_self_material",
-                    color = Color3.fromRGB(191, 191, 244),
+                    color = Color3.fromRGB(227, 144, 191),
                     callback = function(color)
                         selfMaterialColor = color
                         -- Lightweight color apply only when toggle is ON and color changed
@@ -4930,7 +4940,7 @@ Aiming.open_tab()
             -- Self Tool Material
             do
                 local toolMaterialType = "Neon"
-                local toolMaterialColor = Color3.fromRGB(191, 191, 244)
+                local toolMaterialColor = Color3.fromRGB(227, 144, 191)
                 local toolMaterialConn
                 local toolMaterialDropdown
                 local toolEquipConn, backpackAddConn
@@ -5097,7 +5107,7 @@ Aiming.open_tab()
                 selfToolMaterialToggle:colorpicker({
                      name = "Tool Color",
                      flag = "colorpicker_tool_material",
-                     color = Color3.fromRGB(191, 191, 244),
+                     color = Color3.fromRGB(227, 144, 191),
                      callback = function(color)
                          toolMaterialColor = color
                      end
@@ -5107,8 +5117,8 @@ Aiming.open_tab()
             -- Trail Logic
             do
                 local trailEnabled = false
-                local trailColor1 = Color3.fromRGB(191, 191, 244)
-                local trailColor2 = Color3.fromRGB(191, 191, 244)
+                local trailColor1 = Color3.fromRGB(227, 144, 191)
+                local trailColor2 = Color3.fromRGB(227, 144, 191)
                 local trailLifetime = 2.3
 
                 local function updateTrailColor()
@@ -5223,7 +5233,7 @@ Aiming.open_tab()
             local stEnabled = false
             local stGlowEnabled = false
             local stVisibleColor = Color3.fromRGB(0, 0, 0)
-            local stOccludedColor = Color3.fromRGB(255, 255, 255)
+            local stOccludedColor = Color3.fromRGB(227, 144, 191)
             local stVisibleTrans = 0.5
             local stOccludedTrans = 0
             
@@ -5464,7 +5474,7 @@ Aiming.open_tab()
             
             do
                 local tintToggle = LightingSection:toggle({name = "Tint", flag = "visuals_tint", default = false, callback = function() end})
-                tintToggle:colorpicker({flag = "visuals_tint_color", color = Color3.fromRGB(191, 191, 244), callback = function() end})
+                tintToggle:colorpicker({flag = "visuals_tint_color", color = Color3.fromRGB(227, 144, 191), callback = function() end})
             end
             
             LightingSection:toggle({name = "Color Correction", flag = "visuals_cc", default = false, callback = function() end})
@@ -5552,14 +5562,14 @@ Aiming.open_tab()
                     if col.r then return Color3.new(col.r, col.g, col.b) end -- Assuming 0-1 range if table has r,g,b
                     if col[1] then return Color3.new(col[1], col[2], col[3]) end
                 end
-                return Color3.fromRGB(191, 191, 244) -- Fallback
+                return Color3.fromRGB(227, 144, 191) -- Fallback
             end
 
             do
                 local visible = CrosshairSection:toggle({name = "Enabled", flag = "visuals_crosshair_visible", default = false, callback = function(v)
                     if getgenv().crosshair then getgenv().crosshair.enabled = v end
                 end})
-                visible:colorpicker({flag = "visuals_crosshair_color", color = Color3.fromRGB(191, 191, 244), callback = function(v)
+                visible:colorpicker({flag = "visuals_crosshair_color", color = Color3.fromRGB(227, 144, 191), callback = function(v)
                     if getgenv().crosshair then getgenv().crosshair.color = ensureColor3(v) end
                 end})
             end
@@ -5628,7 +5638,7 @@ Aiming.open_tab()
                         if flags.visuals_crosshair_color then
                             getgenv().crosshair.color = ensureColor3(flags.visuals_crosshair_color)
                         else
-                            getgenv().crosshair.color = Color3.fromRGB(191, 191, 244)
+                            getgenv().crosshair.color = Color3.fromRGB(227, 144, 191)
                         end
                         
                         -- Force Center Mode
