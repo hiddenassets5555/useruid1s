@@ -1,5 +1,1277 @@
+-- HWID Blacklist System
+local BlacklistedHWIDs = {
+    "692C33B6-9C19-4170-A749-188194E38B4F",
+    "Example_HWID_2"
+}
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local Loader = {}
+local Products = {}
+local CurrentProduct = nil
+local LeftLabel = nil
+local RightLabel = nil
+
+local loader_config = {
+    LoaderName = "Loader",
+    HeaderColor = {31, 31, 31},
+    AccentColor = {255, 0, 0},
+    BackgroundColor = {12, 12, 12}
+}
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = tostring(math.random(10000, 99999))
+ScreenGui.Enabled = true
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.ResetOnSpawn = false
+
+local gethui = gethui or function() return game:GetService("CoreGui") end
+pcall(function() ScreenGui.Parent = gethui() end)
+if not ScreenGui.Parent then ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end
+
+local MainFrame = Instance.new("Frame")
+MainFrame.ClipsDescendants = true
+MainFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.Name = "MainFrame"
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.Size = UDim2.new(0, 372, 0, 292)
+MainFrame.BorderSizePixel = 0
+MainFrame.BackgroundColor3 = Color3.fromRGB(loader_config.BackgroundColor[1], loader_config.BackgroundColor[2], loader_config.BackgroundColor[3])
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 3)
+UICorner.Parent = MainFrame
+
+local Header = Instance.new("Frame")
+Header.BorderColor3 = Color3.fromRGB(0, 0, 0)
+Header.AnchorPoint = Vector2.new(0.5, 0)
+Header.Name = "Header"
+Header.Position = UDim2.new(0.5, 0, 0, 0)
+Header.Size = UDim2.new(0, 374, 0, 28)
+Header.ZIndex = 15
+Header.BorderSizePixel = 0
+Header.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Header.Parent = MainFrame
+
+local UICorner2 = Instance.new("UICorner")
+UICorner2.CornerRadius = UDim.new(0, 3)
+UICorner2.Parent = Header
+
+local UIGradient = Instance.new("UIGradient")
+UIGradient.Rotation = 90
+UIGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(loader_config.HeaderColor[1], loader_config.HeaderColor[2], loader_config.HeaderColor[3])),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(21, 21, 20))
+}
+UIGradient.Parent = Header
+
+local Liner = Instance.new("Frame")
+Liner.AnchorPoint = Vector2.new(0, 1)
+Liner.Name = "Liner"
+Liner.Position = UDim2.new(0, 0, 1, 0)
+Liner.BorderColor3 = Color3.fromRGB(0, 0, 0)
+Liner.Size = UDim2.new(1, 1, 0, 1)
+Liner.BorderSizePixel = 0
+Liner.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Liner.Parent = Header
+
+local UIGradientLiner = Instance.new("UIGradient")
+UIGradientLiner.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(227, 144, 191)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(227, 144, 191))
+}
+UIGradientLiner.Transparency = NumberSequence.new(0.4)
+UIGradientLiner.Parent = Liner
+
+local LoaderName = Instance.new("TextLabel")
+LoaderName.RichText = true
+LoaderName.Name = "LoaderName"
+LoaderName.TextColor3 = Color3.fromRGB(168, 168, 168)
+LoaderName.BorderColor3 = Color3.fromRGB(0, 0, 0)
+LoaderName.Text = loader_config.LoaderName
+LoaderName.Size = UDim2.new(0, 1, 0, 1)
+LoaderName.TextStrokeTransparency = 0.5
+LoaderName.AnchorPoint = Vector2.new(0, 0.5)
+LoaderName.BorderSizePixel = 0
+LoaderName.BackgroundTransparency = 1
+LoaderName.Position = UDim2.new(0, 9, 0.5, 0)
+LoaderName.AutomaticSize = Enum.AutomaticSize.XY
+LoaderName.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+LoaderName.TextSize = 14
+LoaderName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+LoaderName.Parent = Header
+
+local Exit_Button = Instance.new("ImageButton")
+Exit_Button.ImageColor3 = Color3.fromRGB(168, 168, 168)
+Exit_Button.BorderColor3 = Color3.fromRGB(0, 0, 0)
+Exit_Button.Name = "Exit_Button"
+Exit_Button.AnchorPoint = Vector2.new(1, 0.5)
+Exit_Button.Image = "rbxassetid://79993078202649"
+Exit_Button.BackgroundTransparency = 1
+Exit_Button.Position = UDim2.new(1, -9, 0.5, 0)
+Exit_Button.Size = UDim2.new(0, 15, 0, 15)
+Exit_Button.BorderSizePixel = 0
+Exit_Button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Exit_Button.Parent = Header
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(227, 144, 191)
+UIStroke.Transparency = 0.4
+UIStroke.Parent = MainFrame
+
+local BG_TEXTURE = Instance.new("ImageLabel")
+BG_TEXTURE.ScaleType = Enum.ScaleType.Slice
+BG_TEXTURE.ImageTransparency = 0.9800000190734863
+BG_TEXTURE.BorderColor3 = Color3.fromRGB(0, 0, 0)
+BG_TEXTURE.Name = "BG_TEXTURE"
+BG_TEXTURE.Image = "rbxassetid://136562337748317"
+BG_TEXTURE.BackgroundTransparency = 1
+BG_TEXTURE.Size = UDim2.new(1, 1, 1, 1)
+BG_TEXTURE.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+BG_TEXTURE.BorderSizePixel = 0
+BG_TEXTURE.SliceCenter = Rect.new(Vector2.new(1000, 0), Vector2.new(1000, 267))
+BG_TEXTURE.Parent = MainFrame
+BG_TEXTURE.ZIndex = -5
+
+local ProductHolder = Instance.new("Frame")
+ProductHolder.BorderColor3 = Color3.fromRGB(0, 0, 0)
+ProductHolder.AnchorPoint = Vector2.new(0, 1)
+ProductHolder.BackgroundTransparency = 1
+ProductHolder.Position = UDim2.new(0, 9, 1, -49)
+ProductHolder.Name = "ProductHolder"
+ProductHolder.Size = UDim2.new(0, 115, 0, 205)
+ProductHolder.BorderSizePixel = 0
+ProductHolder.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ProductHolder.Parent = MainFrame
+
+local Container = Instance.new("ScrollingFrame")
+Container.ScrollBarImageColor3 = Color3.fromRGB(43, 43, 43)
+Container.Active = true
+Container.BorderColor3 = Color3.fromRGB(0, 0, 0)
+Container.ScrollBarThickness = 2
+Container.BackgroundTransparency = 1
+Container.Position = UDim2.new(-0.0782608687877655, 0, 0, 0)
+Container.Name = "Container"
+Container.Size = UDim2.new(0, 124, 0, 205)
+Container.BorderSizePixel = 0
+Container.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Container.Parent = ProductHolder
+Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Container.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 12)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Parent = Container
+
+local UIPadding = Instance.new("UIPadding")
+UIPadding.PaddingTop = UDim.new(0, 9)
+UIPadding.PaddingLeft = UDim.new(0, 9)
+UIPadding.Parent = Container
+
+local SelectedProductInfo = Instance.new("Frame")
+SelectedProductInfo.BorderColor3 = Color3.fromRGB(0, 0, 0)
+SelectedProductInfo.AnchorPoint = Vector2.new(1, 1)
+SelectedProductInfo.BackgroundTransparency = 0.6499999761581421
+SelectedProductInfo.Position = UDim2.new(1, -9, 1, -49)
+SelectedProductInfo.Name = "SelectedProductInfo"
+SelectedProductInfo.Size = UDim2.new(0, 232, 0, 196)
+SelectedProductInfo.BorderSizePixel = 0
+SelectedProductInfo.BackgroundColor3 = Color3.fromRGB(15, 15, 17)
+SelectedProductInfo.Parent = MainFrame
+
+local UICorner3 = Instance.new("UICorner")
+UICorner3.CornerRadius = UDim.new(0, 3)
+UICorner3.Parent = SelectedProductInfo
+
+local UIStroke3 = Instance.new("UIStroke")
+UIStroke3.Color = Color3.fromRGB(43, 43, 43)
+UIStroke3.Parent = SelectedProductInfo
+
+local InfoHeader = Instance.new("Frame")
+InfoHeader.BorderColor3 = Color3.fromRGB(0, 0, 0)
+InfoHeader.AnchorPoint = Vector2.new(0.5, 0)
+InfoHeader.Name = "Header"
+InfoHeader.Position = UDim2.new(0.4978448152542114, 0, 0, 0)
+InfoHeader.Size = UDim2.new(0, 231, 0, 28)
+InfoHeader.ZIndex = 15
+InfoHeader.BorderSizePixel = 0
+InfoHeader.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+InfoHeader.Parent = SelectedProductInfo
+
+local UICorner4 = Instance.new("UICorner")
+UICorner4.CornerRadius = UDim.new(0, 3)
+UICorner4.Parent = InfoHeader
+
+local UIGradient2 = Instance.new("UIGradient")
+UIGradient2.Rotation = 90
+UIGradient2.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(loader_config.HeaderColor[1], loader_config.HeaderColor[2], loader_config.HeaderColor[3])),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(21, 21, 20))
+}
+UIGradient2.Parent = InfoHeader
+
+local Liner2 = Instance.new("Frame")
+Liner2.AnchorPoint = Vector2.new(0, 1)
+Liner2.Name = "Liner"
+Liner2.Position = UDim2.new(0, 0, 1, 0)
+Liner2.BorderColor3 = Color3.fromRGB(0, 0, 0)
+Liner2.Size = UDim2.new(1, 1, 0, 1)
+Liner2.BorderSizePixel = 0
+Liner2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Liner2.Parent = InfoHeader
+
+local UIGradientLiner2 = Instance.new("UIGradient")
+UIGradientLiner2.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(227, 144, 191)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(227, 144, 191))
+}
+UIGradientLiner2.Transparency = NumberSequence.new(0.4)
+UIGradientLiner2.Parent = Liner2
+
+local SelectedProduct = Instance.new("TextLabel")
+SelectedProduct.RichText = true
+SelectedProduct.Name = "SelectedProduct"
+SelectedProduct.TextColor3 = Color3.fromRGB(168, 168, 168)
+SelectedProduct.BorderColor3 = Color3.fromRGB(0, 0, 0)
+SelectedProduct.Text = "Select Product"
+SelectedProduct.Size = UDim2.new(0, 1, 0, 1)
+SelectedProduct.TextStrokeTransparency = 0.5
+SelectedProduct.AnchorPoint = Vector2.new(0, 0.5)
+SelectedProduct.BorderSizePixel = 0
+SelectedProduct.BackgroundTransparency = 1
+SelectedProduct.Position = UDim2.new(0, 9, 0.5, 0)
+SelectedProduct.AutomaticSize = Enum.AutomaticSize.XY
+SelectedProduct.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+SelectedProduct.TextSize = 14
+SelectedProduct.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+SelectedProduct.Parent = InfoHeader
+
+local InfoHolder = Instance.new("ScrollingFrame")
+InfoHolder.BorderColor3 = Color3.fromRGB(0, 0, 0)
+InfoHolder.AnchorPoint = Vector2.new(0.5, 1)
+InfoHolder.BackgroundTransparency = 1
+InfoHolder.Position = UDim2.new(0.4978448152542114, 0, 1, 0)
+InfoHolder.Name = "InfoHolder"
+InfoHolder.Size = UDim2.new(0, 231, 0, 166)
+InfoHolder.BorderSizePixel = 0
+InfoHolder.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+InfoHolder.Parent = SelectedProductInfo
+InfoHolder.ScrollBarThickness = 2
+InfoHolder.ScrollBarImageColor3 = Color3.fromRGB(43, 43, 43)
+InfoHolder.AutomaticCanvasSize = Enum.AutomaticSize.Y
+InfoHolder.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+local UIListLayout2 = Instance.new("UIListLayout")
+UIListLayout2.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout2.Parent = InfoHolder
+
+local Seperator = Instance.new("Frame")
+Seperator.BackgroundTransparency = 1
+Seperator.Name = "Seperator"
+Seperator.BorderColor3 = Color3.fromRGB(0, 0, 0)
+Seperator.Size = UDim2.new(0, 231, 0, 25)
+Seperator.BorderSizePixel = 0
+Seperator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Seperator.Visible = false
+Seperator.Parent = InfoHolder
+
+local Liner3 = Instance.new("Frame")
+Liner3.AnchorPoint = Vector2.new(0.5, 0.5)
+Liner3.Name = "Liner"
+Liner3.Position = UDim2.new(0.48051944375038147, 0, 0.5, 0)
+Liner3.BorderColor3 = Color3.fromRGB(0, 0, 0)
+Liner3.Size = UDim2.new(0.9567098617553711, 1, 0, 1)
+Liner3.BorderSizePixel = 0
+Liner3.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+Liner3.Parent = Seperator
+
+local DividerLabel = Instance.new("TextLabel")
+DividerLabel.RichText = true
+DividerLabel.TextColor3 = Color3.fromRGB(132, 132, 132)
+DividerLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+DividerLabel.Text = "INFORMATION"
+DividerLabel.BorderSizePixel = 0
+DividerLabel.TextStrokeTransparency = 0.5
+DividerLabel.AnchorPoint = Vector2.new(0, 0.5)
+DividerLabel.Size = UDim2.new(0, 2, 0, 1)
+DividerLabel.Name = "DividerLabel"
+DividerLabel.Position = UDim2.new(0, 0, 0.5, 0)
+DividerLabel.AutomaticSize = Enum.AutomaticSize.XY
+DividerLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+DividerLabel.TextSize = 14
+DividerLabel.BackgroundColor3 = Color3.fromRGB(13, 13, 14)
+DividerLabel.Parent = Liner3
+
+local UIPadding3 = Instance.new("UIPadding")
+UIPadding3.PaddingRight = UDim.new(0, 10)
+UIPadding3.PaddingLeft = UDim.new(0, 10)
+UIPadding3.Parent = DividerLabel
+
+local LoadButton = Instance.new("Frame")
+LoadButton.AnchorPoint = Vector2.new(0.5, 1)
+LoadButton.Name = "LoadButton"
+LoadButton.Position = UDim2.new(0.5, 0, 1, -9)
+LoadButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+LoadButton.Size = UDim2.new(0, 352, 0, 30)
+LoadButton.BorderSizePixel = 0
+LoadButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+LoadButton.Parent = MainFrame
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 3)
+UICorner.Parent = LoadButton
+
+local UIGradient = Instance.new("UIGradient")
+UIGradient.Rotation = 90
+UIGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(31, 31, 31)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(21, 21, 20))
+}
+UIGradient.Parent = LoadButton
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(43, 43, 43)
+UIStroke.Parent = LoadButton
+
+local LoaderName = Instance.new("TextLabel")
+LoaderName.RichText = true
+LoaderName.Name = "LoaderName"
+LoaderName.TextColor3 = Color3.fromRGB(168, 168, 168)
+LoaderName.BorderColor3 = Color3.fromRGB(0, 0, 0)
+LoaderName.Text = "inject"
+LoaderName.Size = UDim2.new(0, 1, 0, 1)
+LoaderName.TextStrokeTransparency = 0.5
+LoaderName.AnchorPoint = Vector2.new(0.5, 0.5)
+LoaderName.BorderSizePixel = 0
+LoaderName.BackgroundTransparency = 1
+LoaderName.Position = UDim2.new(0.5, 0, 0.5, 0)
+LoaderName.AutomaticSize = Enum.AutomaticSize.XY
+LoaderName.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+LoaderName.TextSize = 14
+LoaderName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+LoaderName.Parent = LoadButton
+
+local LoadButtonClickable = Instance.new("TextButton")
+LoadButtonClickable.Name = "LoadButtonClickable"
+LoadButtonClickable.Text = ""
+LoadButtonClickable.BackgroundTransparency = 1
+LoadButtonClickable.Size = UDim2.new(1, 0, 1, 0)
+LoadButtonClickable.Position = UDim2.new(0, 0, 0, 0)
+LoadButtonClickable.Parent = LoadButton
+
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+Header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+Exit_Button.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+function Loader:CreateProduct(config)
+    local product = {
+        Name = config.Name or "Product",
+        Icon = config.Icon or "rbxassetid://79765429046120",
+        Callback = config.Callback or function() end,
+        Info = config.Info or {},
+        HideLoadButton = config.HideLoadButton or false
+    }
+    
+    local ProductFrame = Instance.new("Frame")
+    ProductFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    ProductFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    ProductFrame.BackgroundTransparency = 1
+    ProductFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    ProductFrame.Name = "Product"
+    ProductFrame.Size = UDim2.new(0, 110, 0, 30)
+    ProductFrame.BorderSizePixel = 0
+    ProductFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    ProductFrame.Parent = Container
+    
+    local ProductName = Instance.new("TextLabel")
+    ProductName.RichText = true
+    ProductName.Name = "ProductName"
+    ProductName.TextColor3 = Color3.fromRGB(167, 167, 167)
+    ProductName.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    ProductName.Text = product.Name
+    ProductName.Size = UDim2.new(0, 1, 0, 1)
+    ProductName.TextStrokeTransparency = 0.5
+    ProductName.AnchorPoint = Vector2.new(0, 0.5)
+    ProductName.BorderSizePixel = 0
+    ProductName.BackgroundTransparency = 1
+    ProductName.Position = UDim2.new(0, 29, 0.5, 0)
+    ProductName.AutomaticSize = Enum.AutomaticSize.XY
+    ProductName.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    ProductName.TextSize = 14
+    ProductName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    ProductName.Parent = ProductFrame
+    
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 3)
+    UICorner.Parent = ProductFrame
+    
+    local UIGradient = Instance.new("UIGradient")
+    UIGradient.Rotation = 90
+    UIGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(31, 31, 31)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(21, 21, 20))
+    }
+    UIGradient.Parent = ProductFrame
+    
+    local Icon = Instance.new("ImageLabel")
+    Icon.ImageColor3 = Color3.fromRGB(133, 133, 133)
+    Icon.ImageTransparency = 0.4
+    Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    Icon.Name = "Icon"
+    Icon.AnchorPoint = Vector2.new(0, 0.5)
+    Icon.Image = product.Icon
+    Icon.BackgroundTransparency = 1
+    Icon.Position = UDim2.new(0, 7, 0.5, 0)
+    Icon.Size = UDim2.new(0, 18, 0, 18)
+    Icon.BorderSizePixel = 0
+    Icon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Icon.Parent = ProductFrame
+    
+    local ProductClickable = Instance.new("TextButton")
+    ProductClickable.Name = "ProductClickable"
+    ProductClickable.Text = ""
+    ProductClickable.BackgroundTransparency = 1
+    ProductClickable.Size = UDim2.new(1, 0, 1, 0)
+    ProductClickable.Position = UDim2.new(0, 0, 0, 0)
+    ProductClickable.Parent = ProductFrame
+    
+    ProductClickable.MouseButton1Click:Connect(function()
+        for _, otherProduct in pairs(Products) do
+            if otherProduct.frame then
+                otherProduct.frame.BackgroundTransparency = 1
+                local otherStroke = otherProduct.frame:FindFirstChild("UIStroke")
+                if otherStroke then otherStroke:Destroy() end
+                otherProduct.frame:FindFirstChild("Icon").ImageColor3 = Color3.fromRGB(133, 133, 133)
+                otherProduct.frame:FindFirstChild("Icon").ImageTransparency = 0.4
+                otherProduct.frame:FindFirstChild("ProductName").TextColor3 = Color3.fromRGB(167, 167, 167)
+            end
+        end
+        
+        ProductFrame.BackgroundTransparency = 0
+        local newStroke = Instance.new("UIStroke")
+        newStroke.Color = Color3.fromRGB(43, 43, 43)
+        newStroke.Parent = ProductFrame
+        
+        Icon.ImageColor3 = Color3.fromRGB(loader_config.AccentColor[1], loader_config.AccentColor[2], loader_config.AccentColor[3])
+        Icon.ImageTransparency = 0.5
+        ProductName.TextColor3 = Color3.fromRGB(168, 168, 168)
+        
+        CurrentProduct = product
+        SelectedProduct.Text = product.Name .. " Info"
+        
+        if product.HideLoadButton then
+            LoadButton.Visible = false
+        else
+            LoadButton.Visible = true
+        end
+        
+        Seperator.Visible = true
+        
+        for _, child in pairs(InfoHolder:GetChildren()) do
+            if child.Name ~= "UIListLayout" and child.Name ~= "Seperator" then
+                child:Destroy()
+            end
+        end
+        
+        LeftLabel = nil
+        RightLabel = nil
+        
+        if product.Info then
+            for _, item in ipairs(product.Info) do
+                if item.Type == "Separator" then
+                    Loader:CreateSeparator(item.Text)
+                elseif item.Type == "Description" then
+                    Loader:CreateDescription(item.Text)
+                elseif item.Type == "Button" then
+                    Loader:CreateButton(item.Text, item.Callback)
+                elseif item.Type == "Keybind" then
+                    Loader:CreateKeybind(item.Key, item.Value, item.Callback)
+                elseif item.Type == "Input" then
+                    Loader:CreateInput(item.Text, item.Callback)
+                else
+                    Loader:CreateLabel(item.Key, item.Value, "left")
+                end
+            end
+        end
+    end)
+    
+    product.frame = ProductFrame
+    table.insert(Products, product)
+    return product
+end
+
+function Loader:CreateLabel(leftText, rightText, position)
+    local Component_Label = Instance.new("Frame")
+    Component_Label.Name = "Component_Label"
+    Component_Label.BackgroundTransparency = 1
+    Component_Label.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    Component_Label.Size = UDim2.new(0, 231, 0, 25)
+    Component_Label.BorderSizePixel = 0
+    Component_Label.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Component_Label.Parent = InfoHolder
+    
+    local LeftTextLabel = Instance.new("TextLabel")
+    LeftTextLabel.RichText = true
+    LeftTextLabel.Name = "LeftTextLabel"
+    LeftTextLabel.TextColor3 = Color3.fromRGB(132, 132, 132)
+    LeftTextLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    LeftTextLabel.Text = leftText
+    LeftTextLabel.Size = UDim2.new(0, 2, 0, 1)
+    LeftTextLabel.TextStrokeTransparency = 0.5
+    LeftTextLabel.AnchorPoint = Vector2.new(0, 0.5)
+    LeftTextLabel.BorderSizePixel = 0
+    LeftTextLabel.BackgroundTransparency = 1
+    LeftTextLabel.Position = UDim2.new(0, 9, 0.5, 0)
+    LeftTextLabel.AutomaticSize = Enum.AutomaticSize.XY
+    LeftTextLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    LeftTextLabel.TextSize = 14
+    LeftTextLabel.BackgroundColor3 = Color3.fromRGB(13, 13, 14)
+    LeftTextLabel.Parent = Component_Label
+    
+    local RightTextLabel = Instance.new("TextLabel")
+    RightTextLabel.RichText = true
+    RightTextLabel.Name = "RightTextLabel"
+    RightTextLabel.TextColor3 = Color3.fromRGB(132, 132, 132)
+    RightTextLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    RightTextLabel.Text = rightText
+    RightTextLabel.Size = UDim2.new(0, 1, 0, 1)
+    RightTextLabel.TextStrokeTransparency = 0.5
+    RightTextLabel.AnchorPoint = Vector2.new(1, 0.5)
+    RightTextLabel.BorderSizePixel = 0
+    RightTextLabel.BackgroundTransparency = 1
+    RightTextLabel.Position = UDim2.new(1, -9, 0.5, 0)
+    RightTextLabel.AutomaticSize = Enum.AutomaticSize.XY
+    RightTextLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    RightTextLabel.TextSize = 14
+    RightTextLabel.BackgroundColor3 = Color3.fromRGB(13, 13, 14)
+    RightTextLabel.Parent = Component_Label
+    
+    if string.find(rightText, "Undetected") then
+        local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+        local tween = TweenService:Create(RightTextLabel, tweenInfo, {TextTransparency = 0.6})
+        tween:Play()
+    end
+    
+    return Component_Label
+end
+
+function Loader:CreateKeybind(text, defaultKey, callback)
+    local Component_Keybind = Instance.new("Frame")
+    Component_Keybind.Name = "Component_Keybind"
+    Component_Keybind.BackgroundTransparency = 1
+    Component_Keybind.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    Component_Keybind.Size = UDim2.new(0, 231, 0, 25)
+    Component_Keybind.BorderSizePixel = 0
+    Component_Keybind.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Component_Keybind.Parent = InfoHolder
+    
+    local LeftTextLabel = Instance.new("TextLabel")
+    LeftTextLabel.RichText = true
+    LeftTextLabel.Name = "LeftTextLabel"
+    LeftTextLabel.TextColor3 = Color3.fromRGB(132, 132, 132)
+    LeftTextLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    LeftTextLabel.Text = text
+    LeftTextLabel.Size = UDim2.new(0, 2, 0, 1)
+    LeftTextLabel.TextStrokeTransparency = 0.5
+    LeftTextLabel.AnchorPoint = Vector2.new(0, 0.5)
+    LeftTextLabel.BorderSizePixel = 0
+    LeftTextLabel.BackgroundTransparency = 1
+    LeftTextLabel.Position = UDim2.new(0, 9, 0.5, 0)
+    LeftTextLabel.AutomaticSize = Enum.AutomaticSize.XY
+    LeftTextLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    LeftTextLabel.TextSize = 14
+    LeftTextLabel.BackgroundColor3 = Color3.fromRGB(13, 13, 14)
+    LeftTextLabel.Parent = Component_Keybind
+    
+    local KeyButton = Instance.new("TextButton")
+    KeyButton.Name = "KeyButton"
+    KeyButton.TextColor3 = Color3.fromRGB(132, 132, 132)
+    KeyButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    KeyButton.Text = defaultKey and defaultKey.Name or "None"
+    KeyButton.Size = UDim2.new(0, 1, 0, 1)
+    KeyButton.TextStrokeTransparency = 0.5
+    KeyButton.AnchorPoint = Vector2.new(1, 0.5)
+    KeyButton.BorderSizePixel = 0
+    KeyButton.BackgroundTransparency = 1
+    KeyButton.Position = UDim2.new(1, -9, 0.5, 0)
+    KeyButton.AutomaticSize = Enum.AutomaticSize.XY
+    KeyButton.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    KeyButton.TextSize = 14
+    KeyButton.BackgroundColor3 = Color3.fromRGB(13, 13, 14)
+    KeyButton.Parent = Component_Keybind
+    
+    KeyButton.MouseButton1Click:Connect(function()
+        KeyButton.Text = "..."
+        local input = game:GetService("UserInputService").InputBegan:Wait()
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            KeyButton.Text = input.KeyCode.Name
+            defaultKey = input.KeyCode -- Update local reference for next time
+            if callback then callback(input.KeyCode) end
+        else
+            KeyButton.Text = defaultKey and defaultKey.Name or "None"
+        end
+    end)
+    
+    return Component_Keybind
+end
+
+function Loader:CreateDescription(text)
+    local DescriptionFrame = Instance.new("Frame")
+    DescriptionFrame.BackgroundTransparency = 1
+    DescriptionFrame.Name = "Description"
+    DescriptionFrame.Size = UDim2.new(0, 231, 0, 0)
+    DescriptionFrame.AutomaticSize = Enum.AutomaticSize.Y
+    DescriptionFrame.Parent = InfoHolder
+    
+    local DescLabel = Instance.new("TextLabel")
+    DescLabel.RichText = true
+    DescLabel.TextColor3 = Color3.fromRGB(132, 132, 132)
+    DescLabel.BackgroundTransparency = 1
+    DescLabel.Text = text
+    DescLabel.TextWrapped = true
+    DescLabel.TextXAlignment = Enum.TextXAlignment.Left
+    DescLabel.Size = UDim2.new(1, -18, 0, 0)
+    DescLabel.Position = UDim2.new(0, 9, 0, 0)
+    DescLabel.AutomaticSize = Enum.AutomaticSize.Y
+    DescLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    DescLabel.TextSize = 14
+    DescLabel.Parent = DescriptionFrame
+    
+    local Padding = Instance.new("UIPadding")
+    Padding.PaddingTop = UDim.new(0, 5)
+    Padding.PaddingBottom = UDim.new(0, 5)
+    Padding.Parent = DescriptionFrame
+    
+    return DescriptionFrame
+end
+
+function Loader:CreateButton(text, callback)
+    local ButtonFrame = Instance.new("Frame")
+    ButtonFrame.BackgroundTransparency = 1
+    ButtonFrame.Name = "Button"
+    ButtonFrame.Size = UDim2.new(0, 231, 0, 35)
+    ButtonFrame.Parent = InfoHolder
+    
+    local Button = Instance.new("TextButton")
+    Button.Text = text
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+    Button.Size = UDim2.new(1, -18, 1, -10)
+    Button.Position = UDim2.new(0, 9, 0, 5)
+    Button.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    Button.TextSize = 14
+    Button.Parent = ButtonFrame
+    
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 4)
+    UICorner.Parent = Button
+    
+    Button.MouseButton1Click:Connect(function()
+        if callback then callback(Button) end
+    end)
+    
+    return ButtonFrame
+end
+
+function Loader:CreateInput(placeholder, callback)
+    local InputFrame = Instance.new("Frame")
+    InputFrame.BackgroundTransparency = 1
+    InputFrame.Name = "Input"
+    InputFrame.Size = UDim2.new(0, 231, 0, 35)
+    InputFrame.Parent = InfoHolder
+    
+    local TextBox = Instance.new("TextBox")
+    TextBox.PlaceholderText = placeholder or "Type here..."
+    TextBox.Text = ""
+    TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TextBox.PlaceholderColor3 = Color3.fromRGB(132, 132, 132)
+    TextBox.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+    TextBox.Size = UDim2.new(1, -18, 1, -10)
+    TextBox.Position = UDim2.new(0, 9, 0, 5)
+    TextBox.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    TextBox.TextSize = 14
+    TextBox.Parent = InputFrame
+    TextBox.ClearTextOnFocus = false
+    TextBox.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 4)
+    UICorner.Parent = TextBox
+    
+    local Padding = Instance.new("UIPadding")
+    Padding.PaddingLeft = UDim.new(0, 8)
+    Padding.Parent = TextBox
+
+    TextBox:GetPropertyChangedSignal("Text"):Connect(function()
+        if callback then
+            callback(TextBox.Text)
+        end
+    end)
+    
+    return InputFrame
+end
+
+function Loader:CreateSeparator(text)
+    local SeparatorFrame = Instance.new("Frame")
+    SeparatorFrame.BackgroundTransparency = 1
+    SeparatorFrame.Name = "CustomSeparator"
+    SeparatorFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    SeparatorFrame.Size = UDim2.new(0, 231, 0, 25)
+    SeparatorFrame.BorderSizePixel = 0
+    SeparatorFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    SeparatorFrame.Parent = InfoHolder
+    
+    local SeparatorLiner = Instance.new("Frame")
+    SeparatorLiner.AnchorPoint = Vector2.new(0.5, 0.5)
+    SeparatorLiner.Name = "Liner"
+    SeparatorLiner.Position = UDim2.new(0.48051944375038147, 0, 0.5, 0)
+    SeparatorLiner.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    SeparatorLiner.Size = UDim2.new(0.9567098617553711, 1, 0, 1)
+    SeparatorLiner.BorderSizePixel = 0
+    SeparatorLiner.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+    SeparatorLiner.Parent = SeparatorFrame
+    
+    local SeparatorLabel = Instance.new("TextLabel")
+    SeparatorLabel.RichText = true
+    SeparatorLabel.TextColor3 = Color3.fromRGB(132, 132, 132)
+    SeparatorLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    SeparatorLabel.Text = text
+    SeparatorLabel.BorderSizePixel = 0
+    SeparatorLabel.TextStrokeTransparency = 0.5
+    SeparatorLabel.AnchorPoint = Vector2.new(0, 0.5)
+    SeparatorLabel.Size = UDim2.new(0, 2, 0, 1)
+    SeparatorLabel.Name = "SeparatorLabel"
+    SeparatorLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    SeparatorLabel.AutomaticSize = Enum.AutomaticSize.XY
+    SeparatorLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    SeparatorLabel.TextSize = 14
+    SeparatorLabel.BackgroundColor3 = Color3.fromRGB(13, 13, 14)
+    SeparatorLabel.Parent = SeparatorLiner
+    
+    local SeparatorPadding = Instance.new("UIPadding")
+    SeparatorPadding.PaddingRight = UDim.new(0, 10)
+    SeparatorPadding.PaddingLeft = UDim.new(0, 10)
+    SeparatorPadding.Parent = SeparatorLabel
+    
+    return SeparatorFrame
+end
+
+LoadButtonClickable.MouseButton1Click:Connect(function()
+    -- Check for Keybind Requirement
+    if CurrentProduct and CurrentProduct.Name == "Home.lua" then
+        if not getgenv().UiBindKey then
+             LoaderName.Text = "You must set a keybind first"
+             task.wait(2)
+             LoaderName.Text = "inject"
+             return
+        end
+    end
+
+    if CurrentProduct and CurrentProduct.Callback then
+        ProductHolder.Visible = false
+        SelectedProductInfo.Visible = false
+        LoadButton.Visible = false
+        
+        local tweenInfo = TweenInfo.new(
+            0.5,
+            Enum.EasingStyle.Quart,
+            Enum.EasingDirection.Out,
+            0,
+            false,
+            0
+        )
+
+        local mainFrameTween = TweenService:Create(MainFrame, tweenInfo, {
+            Size = UDim2.new(0, 288, 0, 188)
+        })
+
+        local headerTween = TweenService:Create(Header, tweenInfo, {
+            Size = UDim2.new(0, 289, 0, 28)
+        })
+
+        mainFrameTween:Play()
+        headerTween:Play()
+
+        mainFrameTween.Completed:Connect(function()
+            LoaderName.Text = "Loader"
+
+            local LoadingMessage = Instance.new("TextLabel")
+            LoadingMessage.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+            LoadingMessage.TextTransparency = 0.25
+            LoadingMessage.TextStrokeTransparency = 0.5
+            LoadingMessage.AnchorPoint = Vector2.new(0.5, 1)
+            LoadingMessage.TextSize = 14
+            LoadingMessage.Size = UDim2.new(0, 1, 0, 1)
+            LoadingMessage.RichText = true
+            LoadingMessage.TextColor3 = Color3.fromRGB(168, 168, 168)
+            LoadingMessage.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            LoadingMessage.Text = "Accessing Database..."
+            LoadingMessage.BackgroundTransparency = 1
+            LoadingMessage.Position = UDim2.new(0.5, 0, 1, -92)
+            LoadingMessage.Name = "LoadingMessage"
+            LoadingMessage.BorderSizePixel = 0
+            LoadingMessage.AutomaticSize = Enum.AutomaticSize.XY
+            LoadingMessage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            LoadingMessage.Parent = MainFrame
+
+            local Progressbar = Instance.new("Frame")
+            Progressbar.AnchorPoint = Vector2.new(0.5, 1)
+            Progressbar.Name = "Progressbar"
+            Progressbar.Position = UDim2.new(0.5, 0, 1, -74)
+            Progressbar.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            Progressbar.Size = UDim2.new(0, 173, 0, 6)
+            Progressbar.BorderSizePixel = 0
+            Progressbar.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+            Progressbar.Parent = MainFrame
+
+            local ProgressbarCorner = Instance.new("UICorner")
+            ProgressbarCorner.Parent = Progressbar
+
+            local Progressbar_Progress = Instance.new("Frame")
+            Progressbar_Progress.AnchorPoint = Vector2.new(0, 0.5)
+            Progressbar_Progress.Name = "Progressbar_Progress"
+            Progressbar_Progress.Position = UDim2.new(0, 0, 0.5, 0)
+            Progressbar_Progress.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            Progressbar_Progress.Size = UDim2.new(0, 0, 0, 6)
+            Progressbar_Progress.BorderSizePixel = 0
+            Progressbar_Progress.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            Progressbar_Progress.Parent = Progressbar
+
+            local ProgressCorner = Instance.new("UICorner")
+            ProgressCorner.Parent = Progressbar_Progress
+
+            local ProgressGradient = Instance.new("UIGradient")
+            ProgressGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(27, 57, 73)),
+                ColorSequenceKeypoint.new(0.495, Color3.fromRGB(38, 81, 103)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(27, 57, 73))
+            }
+            ProgressGradient.Parent = Progressbar_Progress
+
+            -- Authentication Check
+            
+            -- Helper function for dot animation
+            local loadingActive = true
+            local currentStatusText = "Accessing Database"
+
+            task.spawn(function()
+                while loadingActive do
+                    if loadingActive then LoadingMessage.Text = currentStatusText .. "." end
+                    task.wait(0.3)
+                    if loadingActive then LoadingMessage.Text = currentStatusText .. ".." end
+                    task.wait(0.3)
+                    if loadingActive then LoadingMessage.Text = currentStatusText .. "..." end
+                    task.wait(0.3)
+                end
+            end)
+
+            -- Step 1: Accessing Database (0% -> 25%) - Wait 3 seconds
+            currentStatusText = "Accessing Database"
+            local tween1 = TweenService:Create(Progressbar_Progress, TweenInfo.new(3, Enum.EasingStyle.Sine), {
+                Size = UDim2.new(0, 43, 0, 6) -- ~25%
+            })
+            tween1:Play()
+            task.wait(3) 
+
+            -- Step 2: Authenticating (25% -> 50%) - Wait 2 seconds
+            currentStatusText = "Authenticating"
+            local tween2 = TweenService:Create(Progressbar_Progress, TweenInfo.new(2, Enum.EasingStyle.Sine), {
+                Size = UDim2.new(0, 86, 0, 6) -- ~50%
+            })
+            tween2:Play()
+            task.wait(2)
+            
+            loadingActive = false -- Stop dot animation
+
+            local isBlacklisted = false
+            if CurrentProduct.Name == "Home.lua" then
+                local success, hwid = pcall(function()
+                    return game:GetService("RbxAnalyticsService"):GetClientId()
+                end)
+                
+                if success and hwid then
+                    for _, banned in ipairs(BlacklistedHWIDs) do
+                        if hwid == banned then
+                            isBlacklisted = true
+                            break
+                        end
+                    end
+                end
+            end
+
+            if isBlacklisted then
+                LoadingMessage.Text = 'Failed to authenticate Reason <font color="#FF0000">Blacklisted</font>'
+                task.wait(2)
+                
+                -- Reset to Load Screen
+                local resetTweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+                local resetMainTween = TweenService:Create(MainFrame, resetTweenInfo, {
+                    Size = UDim2.new(0, 372, 0, 292)
+                })
+                local resetHeaderTween = TweenService:Create(Header, resetTweenInfo, {
+                    Size = UDim2.new(0, 374, 0, 28)
+                })
+                
+                resetMainTween:Play()
+                resetHeaderTween:Play()
+                
+                resetMainTween.Completed:Connect(function()
+                    LoaderName.Text = "Loader"
+                    LoadingMessage:Destroy()
+                    Progressbar:Destroy()
+                    
+                    ProductHolder.Visible = true
+                    SelectedProductInfo.Visible = true
+                    LoadButton.Visible = true
+                end)
+                return
+            else
+                LoadingMessage.Text = '<font color="#00FF00">Authenticated</font>'
+                task.wait(0.7)
+                
+                -- Step 3: Loading Home.lua (50% -> 100%) - Wait 2 seconds with dot animation
+                currentStatusText = "Loading " .. CurrentProduct.Name
+                loadingActive = true -- Restart dot animation
+                
+                -- Restart the animation loop since we stopped it
+                task.spawn(function()
+                    while loadingActive do
+                        if loadingActive then LoadingMessage.Text = currentStatusText .. "." end
+                        task.wait(0.3)
+                        if loadingActive then LoadingMessage.Text = currentStatusText .. ".." end
+                        task.wait(0.3)
+                        if loadingActive then LoadingMessage.Text = currentStatusText .. "..." end
+                        task.wait(0.3)
+                    end
+                end)
+                
+                -- Step 3: Loading Home.lua (60% -> 100%) - Smooth and Slow
+                local progressTween = TweenService:Create(Progressbar_Progress, TweenInfo.new(2.5, Enum.EasingStyle.Linear), {
+                    Size = UDim2.new(0, 173, 0, 6) -- 100%
+                })
+                progressTween:Play()
+                task.wait(2.5)
+                
+                loadingActive = false -- Stop dot animation
+
+                -- Execute Callback directly after animation finishes
+                CurrentProduct.Callback()
+
+                wait(0.5)
+
+                local exitTweenInfo = TweenInfo.new(
+                    0.4,
+                    Enum.EasingStyle.Back,
+                    Enum.EasingDirection.In,
+                    0,
+                    false,
+                    0
+                )
+
+                local exitTween = TweenService:Create(ScreenGui, exitTweenInfo, {
+                    Enabled = false
+                })
+
+                local scaleTween = TweenService:Create(MainFrame, exitTweenInfo, {
+                    Size = UDim2.new(0, 0, 0, 0)
+                })
+                
+                exitTween:Play()
+                scaleTween:Play()
+                
+                scaleTween.Completed:Connect(function()
+                    ScreenGui:Destroy()
+                end)
+            end
+        end)
+    end
+end)
+
+-- Settings Management
+local SettingsFileName = "Loader_Settings.json"
+local HttpService = game:GetService("HttpService")
+
+local function SaveLoaderSettings()
+    if writefile then
+        local data = {
+            UiBindKey = getgenv().UiBindKey and getgenv().UiBindKey.Name or nil
+        }
+        pcall(function()
+            writefile(SettingsFileName, HttpService:JSONEncode(data))
+        end)
+    end
+end
+
+local function LoadLoaderSettings()
+    if readfile and isfile and isfile(SettingsFileName) then
+        local success, content = pcall(function() return readfile(SettingsFileName) end)
+        if success and content then
+            local successDecode, data = pcall(function() return HttpService:JSONDecode(content) end)
+            if successDecode and data and data.UiBindKey then
+                return Enum.KeyCode[data.UiBindKey]
+            end
+        end
+    end
+    return nil
+end
+
+-- Initialize Keybind (Always None by default as requested)
+getgenv().UiBindKey = nil
+
+--[=[ 
+local savedKey = LoadLoaderSettings()
+if savedKey then
+    getgenv().UiBindKey = savedKey
+elseif not getgenv().UiBindKey then
+    getgenv().UiBindKey = nil
+end
+]=]
+
+local product1 = Loader:CreateProduct({
+    Name = "Home.lua",
+    Icon = "rbxassetid://6026568198",
+    Info = {
+        { Type = "Label", Key = "Status", Value = '<font color="#00FF6A">Undetected</font>' },
+        { Type = "Label", Key = "Version", Value = "Beta" },
+        { Type = "Label", Key = "Last Update", Value = "Jan 03, 2026" },
+        { Type = "Keybind", Key = "Ui Bind", Value = getgenv().UiBindKey, Callback = function(key) 
+            getgenv().UiBindKey = key 
+            SaveLoaderSettings()
+        end }
+    },
+    Callback = function()
+        pcall(function()
+            if getgenv().StartMainScript then
+                getgenv().StartMainScript(getgenv().UiBindKey)
+            end
+        end)
+    end
+})
+
+local product2 = Loader:CreateProduct({
+    Name = "Misc",
+    Icon = "rbxassetid://10723415903",
+    HideLoadButton = true,
+    Info = {
+        { Type = "Description", Text = "Thank you for executing this script if there are any errors please report them in the discord server" },
+        { Type = "Button", Text = "Join Discord", Callback = function() 
+            if setclipboard then
+                setclipboard("https://discord.com/invite/THAFVKrU8d")
+            end
+            if request then
+                request({
+                    Url = "http://127.0.0.1:6463/rpc?v=1",
+                    Method = "POST",
+                    Headers = {
+                        ["Content-Type"] = "application/json",
+                        ["Origin"] = "https://discord.com"
+                    },
+                    Body = game:GetService("HttpService"):JSONEncode({
+                        cmd = "INVITE_BROWSER",
+                        args = {
+                            code = "THAFVKrU8d"
+                        },
+                        nonce = game:GetService("HttpService"):GenerateGUID(false)
+                    })
+                })
+            end
+        end }
+    }
+})
+
+local product3 = Loader:CreateProduct({
+    Name = "Contact Dev",
+    Icon = "rbxassetid://6031265976",
+    HideLoadButton = true,
+    Info = {
+        { Type = "Description", Text = "Send a message to the developer directly for any bugs or suggestions. Misuse of this will blacklist you from using this script." },
+        { Type = "Input", Text = "Type your message here...", Callback = function(text)  
+            getgenv().DevMessage = text 
+        end },
+        { Type = "Button", Text = "Send Message", Callback = function(btn) 
+            if btn.Text ~= "Send Message" then return end
+            
+            -- Blacklist Check
+            local isBlacklisted = false
+            local success, myhwid = pcall(function()
+                return game:GetService("RbxAnalyticsService"):GetClientId()
+            end)
+            if success and myhwid then
+                for _, banned in ipairs(BlacklistedHWIDs) do
+                    if myhwid == banned then
+                        isBlacklisted = true
+                        break
+                    end
+                end
+            end
+
+            if isBlacklisted then
+                 if LoaderName then
+                     local oldText = LoaderName.Text
+                     LoaderName.Text = "Your Blacklisted!"
+                     task.wait(2)
+                     LoaderName.Text = oldText
+                 end
+                 return
+            end
+
+            local msg = getgenv().DevMessage
+            if msg and msg ~= "" then
+                -- Enable cooldown immediately
+                btn.Text = "Sending..."
+
+                local url = "https://discord.com/api/webhooks/1456969141809447053/ucUyYTccaaS5fO7tPYJQiRx5aizHdPcnb9sch8KUFq8ts7PePQ0xl_GgRugYle-6AntK"
+                local player = game:GetService("Players").LocalPlayer
+                local username = player.Name
+                local userId = player.UserId
+                local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+                
+                local data = {
+                    ["embeds"] = {{
+                        ["description"] = msg,
+                        ["color"] = 14913727,
+                        ["fields"] = {
+                            {
+                                ["name"] = "Username",
+                                ["value"] = username .. " (" .. userId .. ")",
+                                ["inline"] = true
+                            },
+                            {
+                                ["name"] = "HWID",
+                                ["value"] = hwid,
+                                ["inline"] = true
+                            }
+                        },
+                        ["footer"] = {
+                            ["text"] = "Sent from Loader"
+                        }
+                    }}
+                }
+                local headers = {
+                    ["Content-Type"] = "application/json"
+                }
+                local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+                if request then
+                    request({Url = url, Body = game:GetService("HttpService"):JSONEncode(data), Method = "POST", Headers = headers})
+                    
+                    -- Feedback & Cooldown
+                    if LoaderName then
+                         local oldText = LoaderName.Text
+                         LoaderName.Text = "Message Sent!"
+                         
+                         for i = 5, 1, -1 do
+                             if btn and btn.Parent then
+                                 btn.Text = "Send Message (" .. i .. ")"
+                             end
+                             task.wait(1)
+                         end
+                         
+                         if btn and btn.Parent then
+                             btn.Text = "Send Message"
+                         end
+                         LoaderName.Text = oldText
+                    end
+                else
+                    -- If request function missing, reset button
+                    btn.Text = "Send Message"
+                end
+            else
+                 if LoaderName then
+                     local oldText = LoaderName.Text
+                     LoaderName.Text = "Type a message first!"
+                     task.wait(2)
+                     LoaderName.Text = oldText
+                 end
+            end
+        end }
+    }
+})
+
+getgenv().StartMainScript = function(ui_keybind)
 local flags = {}
 local library
+
+-- [Cleanup Old Library Instance]
+if getgenv().TraeLibrary then
+    if getgenv().TraeLibrary.connections then
+        for _, connection in pairs(getgenv().TraeLibrary.connections) do
+            if connection and typeof(connection) == "RBXScriptConnection" then
+                connection:Disconnect()
+            end
+        end
+    end
+    
+    if getgenv().TraeLibrary.guis then
+        for _, gui in pairs(getgenv().TraeLibrary.guis) do
+            if gui and gui:IsA("Instance") then
+                gui:Destroy()
+            end
+        end
+    end
+    
+    getgenv().TraeLibrary = nil
+end
+
+-- [Robust Cleanup for Untracked Instances]
+local gethui = gethui or function() return game:GetService("CoreGui") end
+for _, v in pairs(gethui():GetChildren()) do
+    if v:IsA("ScreenGui") and v.Name == "" and v.DisplayOrder == 10000 then
+        v:Destroy()
+    end
+end
+
+-- [Cleanup Old ScriptCleanup Instances]
+if getgenv().ScriptCleanup then
+    for _, connection in pairs(getgenv().ScriptCleanup) do
+        if connection and typeof(connection) == "RBXScriptConnection" then
+            connection:Disconnect()
+        end
+    end
+end
+getgenv().ScriptCleanup = {}
+
+pcall(function()
+    game:GetService("RunService"):UnbindFromRenderStep("DesyncGhostUpdate")
+end)
+
+if workspace:FindFirstChild("DesyncGhost") then
+    workspace.DesyncGhost:Destroy()
+end
+
+-- Also check for old HRP Visualizer parts
+if workspace:FindFirstChild("HRP_Visualizer") then
+    workspace.HRP_Visualizer:Destroy()
+end
+
 local success, code = pcall(function() return readfile("UiLib.txt") end)
 
 if success and code then
@@ -7,6 +1279,8 @@ if success and code then
 else
     library = loadstring(game:HttpGet("https://raw.githubusercontent.com/hiddenassets5555/peppapig12dahood/refs/heads/main/test?t="..tostring(os.time())))(flags)
 end
+
+getgenv().TraeLibrary = library -- Store new library instance for future cleanup
 
 local uis = cloneref(game:GetService("UserInputService"))
 local players = cloneref(game:GetService("Players"))
@@ -1292,19 +2566,6 @@ end
 
 EnableCameraSilentAim()
 
-local occlusionRects = {}
-local function isOccluded(pos)
-    if not library or not library.menu_open then return false end
-    for _, rect in ipairs(occlusionRects) do
-        if pos.X >= rect.x and pos.X <= rect.x + rect.w and
-           pos.Y >= rect.y and pos.Y <= rect.y + rect.h then
-            return true
-        end
-    end
-    return false
-end
-
-
 if coregui:FindFirstChild("BronxESPHolder") then
     coregui.BronxESPHolder:Destroy()
 end
@@ -2025,19 +3286,6 @@ run.RenderStepped:Connect(function()
         end
     end
 
-    if library.menu_open and library.main_frames then
-        table.clear(occlusionRects)
-        for _, frame in ipairs(library.main_frames) do
-            if frame.Visible then
-                local ap = frame.AbsolutePosition
-                local as = frame.AbsoluteSize
-                table.insert(occlusionRects, {x=ap.X, y=ap.Y, w=as.X, h=as.Y})
-            end
-        end
-    else
-        table.clear(occlusionRects)
-    end
-
     -- Logic change: Bind ESP_SETTINGS.Enabled directly to the checkbox.
     -- This prevents ESP from disabling when the menu is open.
     ESP_SETTINGS.Enabled = flags.esp_enabled_dummy
@@ -2447,7 +3695,7 @@ run.RenderStepped:Connect(function()
             if bb and m and m.Parent then
                 local pos = m:GetPivot().Position
                 local screenPos, onScreen = camera:WorldToViewportPoint(pos)
-                if onScreen and not isOccluded(Vector2.new(screenPos.X, screenPos.Y)) then
+                if onScreen then
                     bb.Enabled = (showName or showDistance)
                     local tl = bb:FindFirstChildOfClass("TextLabel")
                     if tl and bb.Enabled then
@@ -2483,7 +3731,7 @@ run.RenderStepped:Connect(function()
             if hl and m and m.Parent then
                 local pos = m:GetPivot().Position
                 local screenPos, onScreen = camera:WorldToViewportPoint(pos)
-                if onScreen and not isOccluded(Vector2.new(screenPos.X, screenPos.Y)) then
+                if onScreen then
                     hl.Enabled = showHighlight
                 else
                     hl.Enabled = false
@@ -2654,7 +3902,7 @@ run.RenderStepped:Connect(function()
                                          end
                                     end
 
-                                    if isOccluded(nPos) and not isLocated then
+                                    if false and not isLocated then
                                         nameText.Visible = false
                                         if modTagText then modTagText.Visible = false end
                                         if roleText then roleText.Visible = false end
@@ -2716,7 +3964,7 @@ run.RenderStepped:Connect(function()
                                             offsetY = ts + math.max(1, math.floor(padding * 0.5))
                                         end
                                         local dPos = Vector2.new(maxX + padding, minY + offsetY)
-                                        if isOccluded(dPos) then
+                                        if false then
                                             distText.Visible = false
                                         else
                                             distText.Position = dPos
@@ -2810,11 +4058,15 @@ do
 
     local oldIndex
     oldIndex = hookmetamethod(game, "__index", function(self, index)
-        if not checkcaller() and library.flags["desync_server"] and library.DesyncData.RealCFrame and (index == "CFrame" or index == "Position") and lp.Character and self == lp.Character.HumanoidRootPart then
-             if index == "Position" then
-                 return library.DesyncData.RealCFrame.Position
-             end
-             return library.DesyncData.RealCFrame
+        if not checkcaller() and library.flags["desync_server"] and library.DesyncData.RealCFrame and (index == "CFrame" or index == "Position") then
+            local char = lp.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp and self == hrp then
+                if index == "Position" then
+                    return library.DesyncData.RealCFrame.Position
+                end
+                return library.DesyncData.RealCFrame
+            end
         end
         return oldIndex(self, index)
     end)
@@ -2867,7 +4119,8 @@ do
 
     local currentRelativeCFrame = CFrame.new(0, 0, 0)
 
-    run.Heartbeat:Connect(function(dt)
+    -- Store connection for cleanup
+    local heartbeatConn = run.Heartbeat:Connect(function(dt)
         local enabled = library.flags["desync_server"]
         local char = lp.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -2881,6 +4134,7 @@ do
         if not enabled then
             library.DesyncData.RealCFrame = nil
             CurrentServerCFrame = root.CFrame
+            currentRelativeCFrame = CFrame.new(0, 0, 0)
             
             if library.remove_info_item then
                 library:add_info_item("Desync Status", "Disabled", Color3.fromRGB(255, 0, 0))
@@ -2900,6 +4154,7 @@ do
         if tool and uis:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) and not autoDesyncActive then
             library.DesyncData.RealCFrame = nil
             CurrentServerCFrame = root.CFrame
+            currentRelativeCFrame = CFrame.new(0, 0, 0)
             return
         end
 
@@ -2954,20 +4209,11 @@ do
              local z = tonumber(library.flags["desync_offset_z"]) or 0
              local posOffset = Vector3.new(x, y, z)
              
-             local rotOffset = CFrame.new(0, 0, 0)
-             if library.flags["desync_rot_spoofer"] then
-                 local p = tonumber(library.flags["desync_rot_pitch"]) or 0
-                 local yaw = tonumber(library.flags["desync_rot_yaw"]) or 0
-                 local r = tonumber(library.flags["desync_rot_roll"]) or 0
-                 
-                 if library.flags["desync_invert"] then
-                     p = -p
-                     yaw = -yaw
-                     r = -r
-                 end
-                 
-                 rotOffset = CFrame.Angles(p, yaw, r)
-            end
+             local p = tonumber(library.flags["desync_rot_pitch"]) or 0
+             local yaw = tonumber(library.flags["desync_rot_yaw"]) or 0
+             local r = tonumber(library.flags["desync_rot_roll"]) or 0
+             
+             local rotOffset = CFrame.Angles(math.rad(p), math.rad(yaw), math.rad(r))
              
              targetRelative = CFrame.new(posOffset.X, posOffset.Y, posOffset.Z) * rotOffset
         end
@@ -2995,22 +4241,139 @@ do
              end
         end
     end)
+    table.insert(getgenv().ScriptCleanup, heartbeatConn)
 
-    run.RenderStepped:Connect(function(dt)
+    
+    local ghostChar = nil
+    local smoothedGhostCFrame = nil
+    local ghostPartCache = {} -- [RealPart] = GhostPart
+    local lastChar = nil
+    
+    run:BindToRenderStep("DesyncGhostUpdate", Enum.RenderPriority.Camera.Value - 1, function(dt)
         local char = lp.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
+        
+        -- Reset cache on respawn
+        if char ~= lastChar then
+            ghostPartCache = {}
+            if ghostChar then ghostChar:Destroy() ghostChar = nil end
+            lastChar = char
+        end
         
         -- Restore RealCFrame
         if library.DesyncData.RealCFrame and root then
             root.CFrame = library.DesyncData.RealCFrame
         end
+        
+        -- Calculate Live Server CFrame (Smoother)
+        local liveServerCFrame = nil
+        if root and currentRelativeCFrame then
+             liveServerCFrame = root.CFrame * currentRelativeCFrame
+        elseif CurrentServerCFrame then
+             liveServerCFrame = CurrentServerCFrame
+        end
+
+        -- Apply extra smoothing to match Indicator (dt * 15)
+        if liveServerCFrame then
+            if not smoothedGhostCFrame then 
+                smoothedGhostCFrame = liveServerCFrame 
+            end
+            smoothedGhostCFrame = smoothedGhostCFrame:Lerp(liveServerCFrame, math.clamp(dt * 15, 0, 1))
+        else
+            smoothedGhostCFrame = nil
+        end
+
+        -- HRP Visualizer (Now Ghost Character)
+        if library.flags["desync_visualize"] and library.flags["desync_visualize_hrp"] and smoothedGhostCFrame and root and char then
+             if not ghostChar or not ghostChar.Parent then
+                 -- Create Ghost Character Folder
+                 ghostChar = Instance.new("Folder")
+                 ghostChar.Name = "DesyncGhost"
+                 ghostChar.Parent = workspace
+                 -- If ghostChar was recreated, we must clear cache references to invalid parts
+                 ghostPartCache = {}
+             end
+
+             local visColor = library.flags["desync_visualize_color"]
+             if typeof(visColor) == "table" and visColor.Color then visColor = visColor.Color end
+             visColor = visColor or Color3.fromRGB(227, 144, 191)
+
+             -- Update Ghost Parts
+             local currentFrameParts = {}
+             local matEnum = Enum.Material.ForceField
+             if library.flags["desync_hrp_material"] == "Neon" then
+                matEnum = Enum.Material.Neon
+             end
+
+             for _, part in pairs(char:GetDescendants()) do
+                local isAccessory = part:FindFirstAncestorWhichIsA("Accessory")
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and not part:FindFirstAncestorWhichIsA("Tool") and (matEnum ~= Enum.Material.Neon or not isAccessory) then
+                    -- Mark as valid for this frame
+                    currentFrameParts[part] = true
+                    
+                    local ghostPart = ghostPartCache[part]
+                    
+                    if not ghostPart or not ghostPart.Parent then
+                         ghostPart = part:Clone()
+                         ghostPart.Name = part.Name -- Name doesn't matter for collision now, but good for debug
+                         ghostPart.Parent = ghostChar
+                         ghostPart.Anchored = true
+                         ghostPart.CanCollide = false
+                         ghostPart.CanTouch = false
+                         ghostPart.CanQuery = false
+                         ghostPart.Massless = true
+                         ghostPart.Material = matEnum
+                         ghostPart.Color = visColor
+                         ghostPart.Transparency = 0.5
+                         
+                         -- Remove Scripts, Joints, Constraints, Decals (Faces), GUIs (NameTags), Textures
+                        for _, child in pairs(ghostPart:GetChildren()) do
+                            if child:IsA("LocalScript") or child:IsA("Script") or child:IsA("JointInstance") or child:IsA("Weld") or child:IsA("Constraint") or child:IsA("Decal") or child:IsA("Texture") or child:IsA("BillboardGui") or child:IsA("SurfaceGui") or child:IsA("ScreenGui") then
+                                child:Destroy()
+                            end
+                        end
+                        
+                        -- Cache it
+                        ghostPartCache[part] = ghostPart
+                     end
+                     
+                     -- Ensure collision properties are enforced every frame just in case
+                     ghostPart.CanCollide = false
+                     ghostPart.CanTouch = false
+                     ghostPart.CanQuery = false
+                     
+                     -- Calculate Server Position for this part
+                     -- ServerRoot * (RealRoot:Inverse() * RealPart)
+                     local relCFrame = root.CFrame:Inverse() * part.CFrame
+                     ghostPart.CFrame = smoothedGhostCFrame * relCFrame
+                     ghostPart.Color = visColor
+                     ghostPart.Material = matEnum
+                     ghostPart.Transparency = 0.6
+                 end
+             end
+             
+             -- Cleanup old parts (mark and sweep)
+             for realPart, ghostPart in pairs(ghostPartCache) do
+                 if not currentFrameParts[realPart] then
+                     if ghostPart then ghostPart:Destroy() end
+                     ghostPartCache[realPart] = nil
+                 end
+             end
+             
+        else
+            if ghostChar then
+                ghostChar:Destroy()
+                ghostChar = nil
+                ghostPartCache = {}
+            end
+        end
 
         -- Update Indicator
         -- local enabled = library.flags["desync_server"] -- Removed to allow visualization when disabled
-        local visualize = library.flags["desync_visualize"]
+        local visualize = library.flags["desync_visualize"] and library.flags["desync_visualize_indicator"]
         local camera = ws.CurrentCamera
 
-        if not visualize or not root or not CurrentServerCFrame or not camera then
+        if not visualize or not root or not liveServerCFrame or not camera then
             imageIndicator.Visible = false
             backgroundCircle.Visible = false
             smoothedPos = nil
@@ -3018,7 +4381,7 @@ do
         end
 
         -- Visualization Logic
-        local targetPos = CurrentServerCFrame.Position
+        local targetPos = liveServerCFrame.Position
         
         -- Attempt to find Torso offset
         local torso = char and char:FindFirstChild("Torso")
@@ -3030,10 +4393,10 @@ do
              -- Calculate relative offset of Torso from Root in Object Space
              local relCFrame = root.CFrame:ToObjectSpace(torso.CFrame)
              -- Apply that offset to the CurrentServerCFrame
-             targetPos = CurrentServerCFrame:ToWorldSpace(relCFrame).Position
+             targetPos = liveServerCFrame:ToWorldSpace(relCFrame).Position
         else
              -- Fallback approximate offset if Torso not found (approx 2.5 studs up relative to root)
-             targetPos = CurrentServerCFrame:ToWorldSpace(CFrame.new(0, 2.5, 0)).Position
+             targetPos = liveServerCFrame:ToWorldSpace(CFrame.new(0, 2.5, 0)).Position
         end
 
         if not smoothedPos then
@@ -3065,7 +4428,7 @@ do
             backgroundCircle.Position = pos
             
             -- Rotation Logic (Visualizes Server Rotation)
-            local _, yaw, _ = CurrentServerCFrame:ToEulerAnglesYXZ()
+            local _, yaw, _ = liveServerCFrame:ToEulerAnglesYXZ()
             local _, camYaw, _ = camera.CFrame:ToEulerAnglesYXZ()
             local relativeYaw = yaw - camYaw
             imageIndicator.Rotation = math.deg(-relativeYaw)
@@ -3124,7 +4487,9 @@ local concat = table.concat
 
 
 
-local window = library:window({name = os.date('Home | UiBind - Z'), size = dim2(0, 567, 0, 580)})
+local window = library:window({name = os.date('Home'), size = dim2(0, 567, 0, 580)})
+
+
 
 local Aiming = window:tab({name = "Combat"})
 local Players = window:tab({name = "Players"})
@@ -3151,11 +4516,13 @@ Aiming.open_tab()
     TargetHUD.items.Window.Position = dim2(0.5, -161, 1, -180)
     TargetHUD.items.InfoTitle.Text = "Target"
     
-    run.RenderStepped:Connect(function(dt)
+    -- Store connection for cleanup
+    local renderConn = run.RenderStepped:Connect(function(dt)
         local silentTarget = getgenv().SilentAimTarget
         local displayTarget = CurrentTarget or silentTarget
 
         if flags.toggle_target_hud and displayTarget then
+            -- ... (rest of logic) ...
             local character, player
             if displayTarget:IsA("Player") then
                 player = displayTarget
@@ -3177,6 +4544,7 @@ Aiming.open_tab()
             TargetHUD.set_visible(false)
         end
     end)
+    table.insert(getgenv().ScriptCleanup, renderConn)
 
 
 
@@ -3199,20 +4567,69 @@ Aiming.open_tab()
             end
         })
 
-        local visualizeDesync = Desync:toggle({
-            name = "Visualize Desync",
-            flag = "desync_visualize"
+        local visIndicator
+        local visHrp
+        
+        local function setObjVisible(obj, vis)
+             if obj and obj.set_visible then
+                 obj.set_visible(vis)
+             elseif obj and obj.set_element_visible then
+                 obj.set_element_visible(vis)
+             elseif obj and obj.SetVisible then
+                 obj.SetVisible(vis)
+             elseif obj and type(obj) == "table" and obj.container then
+                  obj.container.Visible = vis
+             end
+        end
+
+        local visualizations = Desync:toggle({
+            name = "Visualizations",
+            flag = "desync_visualize",
+            callback = function(val)
+                setObjVisible(visIndicator, val)
+                setObjVisible(visHrp, val)
+                setObjVisible(hrpMaterial, val and library.flags["desync_visualize_hrp"])
+            end
         })
-        visualizeDesync:colorpicker({
+        visualizations:colorpicker({
             name = "Visualize Color",
             flag = "desync_visualize_color",
             color = Color3.fromRGB(227, 144, 191)
         })
+
+        visIndicator = Desync:toggle({
+            name = "Indicator",
+            flag = "desync_visualize_indicator",
+            default = false
+        })
+        
+        visHrp = Desync:toggle({
+            name = "HRP",
+            flag = "desync_visualize_hrp",
+            default = false,
+            callback = function(val)
+                setObjVisible(hrpMaterial, library.flags["desync_visualize"] and val)
+            end
+        })
+
+        local hrpMaterial = Desync:dropdown({
+            name = "Material Type",
+            flag = "desync_hrp_material",
+            items = {"ForceField", "Neon"},
+            default = "ForceField"
+        })
+        
+        -- Initialize visibility based on current flag state
+        local startVis = library.flags and library.flags["desync_visualize"] or false
+        setObjVisible(visIndicator, startVis)
+        setObjVisible(visHrp, startVis)
+        setObjVisible(hrpMaterial, startVis and library.flags["desync_visualize_hrp"])
         
         -- Forward declaration for sliders
         local sliderX, sliderY, sliderZ
         local sliderPitch, sliderYaw, sliderRoll
         local desyncDivider
+        local rotSpoofer, invertToggle
 
         local function updateDesyncVis(mode)
             local isCustom = (mode == "Custom")
@@ -3220,6 +4637,8 @@ Aiming.open_tab()
             local function setVis(obj, vis)
                 if obj and obj.set_visible then
                     obj.set_visible(vis)
+                elseif obj and obj.set_element_visible then
+                    obj.set_element_visible(vis)
                 elseif obj and obj.SetVisible then
                     obj.SetVisible(vis)
                 elseif obj and type(obj) == "table" and obj.container then
@@ -3251,6 +4670,9 @@ Aiming.open_tab()
             end
         })
         
+        -- Custom Mode Elements
+        -- Moved to after SCP proximity toggle to avoid duplication and fix divider error
+
         Desync:toggle({
             name = "SCP proximity",
             flag = "desync_near_scp",
@@ -3396,9 +4818,9 @@ Aiming.open_tab()
             BackgroundColor3 = Color3.fromRGB(45, 45, 45)
         })
 
-        sliderPitch = Desync:slider({name = "Custom X Angle", flag = "desync_rot_pitch", min = -30, max = 30, default = 0, decimal = 1})
-        sliderYaw = Desync:slider({name = "Custom Y Angle", flag = "desync_rot_yaw", min = -30, max = 30, default = 0, decimal = 1})
-        sliderRoll = Desync:slider({name = "Custom Z Angle", flag = "desync_rot_roll", min = -30, max = 30, default = 0, decimal = 1})
+        sliderPitch = Desync:slider({name = "Custom X Angle", flag = "desync_rot_pitch", min = 0, max = 180, default = 0, decimal = 1})
+        sliderYaw = Desync:slider({name = "Custom Y Angle", flag = "desync_rot_yaw", min = 0, max = 180, default = 0, decimal = 1})
+        sliderRoll = Desync:slider({name = "Custom Z Angle", flag = "desync_rot_roll", min = 0, max = 180, default = 0, decimal = 1})
         
         -- Initialize visibility
         updateDesyncVis(library.flags["desync_mode"] or "Custom")
@@ -5619,8 +7041,138 @@ Aiming.open_tab()
             -- Load and Sync Crosshair Library (After UI creation to ensure flags exist)
             task.spawn(function()
                 pcall(function()
-                    -- Force load the library to ensure render loop is running
-                    loadstring(game:HttpGet('https://raw.githubusercontent.com/hiddenassets5555/frontlines/refs/heads/main/a', true))()
+                    
+                    -- Cleanup Old Instances (Self-Correction)
+                    if getgenv().crosshair_instance then
+                        if getgenv().crosshair_instance.connection then
+                            getgenv().crosshair_instance.connection:Disconnect()
+                        end
+                        if getgenv().crosshair_instance.drawings then
+                            for _, d in pairs(getgenv().crosshair_instance.drawings) do
+                                if d.Remove then d:Remove() end
+                            end
+                        end
+                    end
+                    
+                    getgenv().crosshair_instance = {
+                        drawings = {},
+                        connection = nil
+                    }
+
+                    -- Inlined Crosshair Logic (Refactored)
+                    getgenv().crosshair = {
+                        enabled = true,
+                        refreshrate = 0.015,
+                        mode = 'mouse', -- center, mouse, custom
+                        position = Vector2.new(0,0), -- custom position
+                        width = 2.5,
+                        length = 10,
+                        radius = 11,
+                        color = Color3.fromRGB(66, 84, 245),
+                        spin = true, -- animate the rotation
+                        spin_speed = 150,
+                        spin_max = 340,
+                        spin_style = Enum.EasingStyle.Circular, -- Linear for normal smooth spin
+                        resize = true, -- animate the length
+                        resize_speed = 150,
+                        resize_min = 5,
+                        resize_max = 22,
+                    }
+
+                    local function createDrawing(class, properties)
+                        local drawing = Drawing.new(class)
+                        for i,v in next, properties or {} do
+                            drawing[i] = v
+                        end
+                        table.insert(getgenv().crosshair_instance.drawings, drawing)
+                        return drawing
+                    end
+
+                    local runservice = game:GetService('RunService')
+                    local inputservice = game:GetService('UserInputService')
+                    local tweenservice = game:GetService('TweenService')
+                    local camera = workspace.CurrentCamera
+
+                    local last_render = 0
+
+                    local drawings = {
+                        crosshair = {},
+                        text = {
+                            createDrawing('Text', {Size = 13, Font = 3, Outline = true, Text = 'Home', Color = Color3.new(1,1,1)}),
+                            createDrawing('Text', {Size = 13, Font = 3, Outline = true, Text = '.Private', Color = Color3.new(1,1,1)}),
+                        }
+                    }
+
+                    for idx = 1, 4 do
+                        drawings.crosshair[idx] = createDrawing('Line')
+                        drawings.crosshair[idx + 4] = createDrawing('Line')
+                    end
+
+                    local function solve(angle, radius)
+                        return Vector2.new(
+                            math.sin(math.rad(angle)) * radius,
+                            math.cos(math.rad(angle)) * radius
+                        )
+                    end
+
+                    local conn = runservice.PostSimulation:Connect(function()
+                        local _tick = tick()
+                        if _tick - last_render > crosshair.refreshrate then
+                            last_render = _tick
+                            local position = (
+                                crosshair.mode == 'center' and camera.ViewportSize / 2 or
+                                crosshair.mode == 'mouse' and inputservice:GetMouseLocation() or
+                                crosshair.position
+                            )
+                            local text_1 = drawings.text[1]
+                            local text_2 = drawings.text[2]
+                            text_1.Visible = crosshair.enabled
+                            text_2.Visible = crosshair.enabled
+                            if crosshair.enabled then
+                                local width1 = text_1.TextBounds.X
+                                local width2 = text_2.TextBounds.X
+                                local totalWidth = width1 + width2
+                                local maxLength = crosshair.resize and (crosshair.resize_min + crosshair.resize_max) or crosshair.length
+                                local basePos = position + Vector2.new(-totalWidth / 2, crosshair.radius + maxLength + 20)
+                                
+                                text_1.Position = basePos
+                                text_1.Color = Color3.new(1, 1, 1)
+                                
+                                text_2.Position = basePos + Vector2.new(width1, 0)
+                                text_2.Color = crosshair.color
+                                
+                                for idx = 1, 4 do
+                                    local outline = drawings.crosshair[idx]
+                                    local inline = drawings.crosshair[idx + 4]
+                                    local angle = (idx - 1) * 90
+                                    local length = crosshair.length
+                                    if crosshair.spin then
+                                        local spin_angle = -_tick * crosshair.spin_speed % crosshair.spin_max
+                                        angle = angle + tweenservice:GetValue(spin_angle / 360, crosshair.spin_style, Enum.EasingDirection.InOut) * 360
+                                    end
+                                    if crosshair.resize then
+                                        local resize_length = tick() * crosshair.resize_speed % 180
+                                        length = crosshair.resize_min + math.sin(math.rad(resize_length)) * crosshair.resize_max
+                                    end
+                                    inline.Visible = true
+                                    inline.Color = crosshair.color
+                                    inline.From = position + solve(angle, crosshair.radius)
+                                    inline.To = position + solve(angle, crosshair.radius + length)
+                                    inline.Thickness = crosshair.width
+                                    outline.Visible = true
+                                    outline.From = position + solve(angle, crosshair.radius - 1)
+                                    outline.To = position + solve(angle, crosshair.radius + length + 1)
+                                    outline.Thickness = crosshair.width + 1.5    
+                                end
+                            else
+                                for idx = 1, 4 do
+                                    drawings.crosshair[idx].Visible = false
+                                    drawings.crosshair[idx + 4].Visible = false
+                                end
+                            end
+                        end
+                    end)
+                    getgenv().crosshair_instance.connection = conn
 
                     if getgenv().crosshair then
                         -- Wait a moment for flags to be registered if needed, though they should be ready
@@ -5734,6 +7286,7 @@ Aiming.open_tab()
     end)()
 
 library:config_list_update()
+
 for index, value in themes.preset do 
 pcall(function()
     library:update_theme(index, value)
@@ -5836,3 +7389,4 @@ run.RenderStepped:Connect(function()
         end
     end
 end)
+end
