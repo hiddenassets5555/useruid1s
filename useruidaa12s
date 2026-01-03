@@ -1,7 +1,7 @@
 -- HWID Blacklist System
 local BlacklistedHWIDs = {
-    "692C33B6-9C19-4170-A749-188194E38B4F",
-    "Example_HWID_2"
+    "",
+    ""
 }
 
 local TweenService = game:GetService("TweenService")
