@@ -1650,10 +1650,11 @@ local function UpdateModeratorList()
         local row1 = library:create("Frame", {
             Parent = library.moderator_list,
             Name = player.Name .. "_User",
-            Size = UDim2.new(1, 0, 0, 15),
+            Size = UDim2.new(1, 0, 0, 18),
             BackgroundTransparency = 1,
             BorderSizePixel = 0
         })
+        library:create("UIPadding", {Parent = row1, PaddingLeft = dim(0, 5), PaddingRight = dim(0, 5)})
         
         local userLabel = library:create("TextLabel", {
             Parent = row1,
@@ -1675,7 +1676,7 @@ local function UpdateModeratorList()
             Name = "Value",
             Text = player.Name,
             TextColor3 = library.themes.preset.text,
-            TextXAlignment = Enum.TextXAlignment.Left,
+            TextXAlignment = Enum.TextXAlignment.Right,
             Size = UDim2.new(0.7, 0, 1, 0),
             Position = UDim2.new(0.3, 0, 0, 0),
             BackgroundTransparency = 1,
@@ -1690,10 +1691,11 @@ local function UpdateModeratorList()
         local row2 = library:create("Frame", {
             Parent = library.moderator_list,
             Name = player.Name .. "_Role",
-            Size = UDim2.new(1, 0, 0, 15),
+            Size = UDim2.new(1, 0, 0, 18),
             BackgroundTransparency = 1,
             BorderSizePixel = 0
         })
+        library:create("UIPadding", {Parent = row2, PaddingLeft = dim(0, 5), PaddingRight = dim(0, 5)})
 
         local roleLabel = library:create("TextLabel", {
             Parent = row2,
@@ -1715,7 +1717,7 @@ local function UpdateModeratorList()
             Name = "Value",
             Text = role,
             TextColor3 = Color3.fromRGB(255, 0, 0),
-            TextXAlignment = Enum.TextXAlignment.Left,
+            TextXAlignment = Enum.TextXAlignment.Right,
             Size = UDim2.new(0.7, 0, 1, 0),
             Position = UDim2.new(0.3, 0, 0, 0),
             BackgroundTransparency = 1,
@@ -1730,10 +1732,11 @@ local function UpdateModeratorList()
         local row3 = library:create("Frame", {
             Parent = library.moderator_list,
             Name = player.Name .. "_ID",
-            Size = UDim2.new(1, 0, 0, 15),
+            Size = UDim2.new(1, 0, 0, 18),
             BackgroundTransparency = 1,
             BorderSizePixel = 0
         })
+        library:create("UIPadding", {Parent = row3, PaddingLeft = dim(0, 5), PaddingRight = dim(0, 5)})
 
         local idLabel = library:create("TextLabel", {
             Parent = row3,
@@ -1755,7 +1758,7 @@ local function UpdateModeratorList()
             Name = "Value",
             Text = tostring(player.UserId),
             TextColor3 = library.themes.preset.text,
-            TextXAlignment = Enum.TextXAlignment.Left,
+            TextXAlignment = Enum.TextXAlignment.Right,
             Size = UDim2.new(0.7, 0, 1, 0),
             Position = UDim2.new(0.3, 0, 0, 0),
             BackgroundTransparency = 1,
@@ -1769,10 +1772,11 @@ local function UpdateModeratorList()
         local row4 = library:create("Frame", {
             Parent = library.moderator_list,
             Name = player.Name .. "_Locate",
-            Size = UDim2.new(1, 0, 0, 15),
+            Size = UDim2.new(1, 0, 0, 18),
             BackgroundTransparency = 1,
             BorderSizePixel = 0
         })
+        library:create("UIPadding", {Parent = row4, PaddingLeft = dim(0, 5), PaddingRight = dim(0, 5)})
 
         local toggleLabel = library:create("TextLabel", {
             Parent = row4,
@@ -1792,8 +1796,8 @@ local function UpdateModeratorList()
         local toggleContainer = library:create("Frame", {
             Parent = row4,
             Name = "Value",
-            AnchorPoint = Vector2.new(0, 0.5),
-            Position = UDim2.new(0.3, 0, 0.5, 0),
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -5, 0.5, 0),
             Size = UDim2.new(0, 11, 0, 11),
             BackgroundColor3 = library.themes.preset.outline,
             BorderSizePixel = 0
@@ -1824,6 +1828,10 @@ local function UpdateModeratorList()
             trackedModerators[player.UserId] = not trackedModerators[player.UserId]
             toggleInner.Visible = trackedModerators[player.UserId]
         end)
+    end
+    
+    if library.moderator_list_frame then
+        library.moderator_list_frame.Visible = (#activeStaff > 0)
     end
 end
 
@@ -2155,10 +2163,22 @@ local function ValidateTarget(lp, tp)
     if flags.toggle_forcefield_check and tch:FindFirstChildOfClass("ForceField") then return false end
     local hum = tch:FindFirstChildOfClass("Humanoid")
     if not hum or (flags.toggle_death_check and hum.Health <= 0) then return false end
+    
+    local lt, tt = RetrievePlayerTeamName(lp), RetrievePlayerTeamName(tp)
+    
+    -- Explicitly ignore Tutorial
+    if tt == "Tutorial" then return false end
+
+    -- Scientist Logic: Only hostile if holding a gun
+    if tt == "Scientific Department" then
+        local tool = tch:FindFirstChildOfClass("Tool")
+        if not tool then return false end
+    end
+
     if not flags.toggle_team_check then
         return true
     end
-    local lt, tt = RetrievePlayerTeamName(lp), RetrievePlayerTeamName(tp)
+    
     local hostile = {}
     if lt == "Class - D" or lt == "Chaos Insurgency" then
         hostile = {
@@ -2685,6 +2705,9 @@ local function setupESPCache(p)
     AddOutline(b.BottomRightSide, 1)
     b.BottomRightDown = CreateBronxElement("Frame", {Parent = ScreenGui, BackgroundColor3 = Color3.new(1,1,1), Position = UDim2.new(0, 0, 0, 0), BorderSizePixel = 0, Visible = false})
     AddOutline(b.BottomRightDown, 1)
+    
+    -- Tracer
+    b.Tracer = CreateBronxElement("Frame", {Parent = ScreenGui, BackgroundColor3 = Color3.new(1,1,1), BorderSizePixel = 0, Visible = false, AnchorPoint = Vector2.new(0.5, 0.5)})
 
     -- Animation State
     b.RotationAngle = 0
@@ -2930,6 +2953,7 @@ local function HideBronxESP(p)
     if b.Distance then b.Distance.Visible = false end
     if b.Weapon then b.Weapon.Visible = false end
     if b.HealthText then b.HealthText.Visible = false end
+    if b.Tracer then b.Tracer.Visible = false end
     if b.LeftTop then b.LeftTop.Visible = false end
     if b.LeftSide then b.LeftSide.Visible = false end
     if b.RightTop then b.RightTop.Visible = false end
@@ -2981,8 +3005,36 @@ local function UpdateBronxESP(p)
 
     local teamColorOverride = nil
     if flags.esp_self_dummy then
-        local teamName = RetrievePlayerTeamName(p)
-        teamColorOverride = RoleColors[teamName]
+        if flags.esp_friend_enemy_color then
+            local myTeam = RetrievePlayerTeamName(players.LocalPlayer)
+            local theirTeam = RetrievePlayerTeamName(p)
+            
+            local insurgency = {["Class - D"] = true, ["Chaos Insurgency"] = true}
+            local foundation = {
+                ["Security Department"]=true,["Mobile Task Force"]=true,
+                ["Internal Security Department"]=true,["Rapid Response Team"]=true,
+                ["Scientific Department"]=true,["Medical Department"]=true,
+                ["Administrative Department"]=true,["Intelligence Agency"]=true
+            }
+            
+            local isFriend = false
+            if myTeam == theirTeam then
+                isFriend = true
+            elseif insurgency[myTeam] and insurgency[theirTeam] then
+                isFriend = true
+            elseif foundation[myTeam] and foundation[theirTeam] then
+                isFriend = true
+            end
+            
+            if isFriend then
+                teamColorOverride = getFlagColor(flags.esp_good_color, Color3.new(0, 1, 0))
+            else
+                teamColorOverride = getFlagColor(flags.esp_bad_color, Color3.new(1, 0, 0))
+            end
+        else
+            local teamName = RetrievePlayerTeamName(p)
+            teamColorOverride = RoleColors[teamName]
+        end
     end
 
     local function getColor(flag, default)
@@ -3273,6 +3325,31 @@ local function UpdateBronxESP(p)
         end
     else
         b.HealthText.Visible = false
+    end
+
+    -- Tracer
+    if flags.esp_tracer_dummy then
+        local origin = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y) -- Default Bottom
+        local posStr = flags.esp_tracer_pos_dummy
+        
+        if posStr == "Top" then
+            origin = Vector2.new(camera.ViewportSize.X / 2, 0)
+        elseif posStr == "Center" then
+            origin = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+        end
+        
+        local target = Vector2.new(pos.X, pos.Y)
+        local length = (target - origin).Magnitude
+        local center = (target + origin) / 2
+        local angle = math.atan2(target.Y - origin.Y, target.X - origin.X)
+        
+        b.Tracer.Visible = true
+        b.Tracer.Size = UDim2.new(0, length, 0, 1) -- Thickness 1
+        b.Tracer.Position = UDim2.new(0, center.X, 0, center.Y)
+        b.Tracer.Rotation = math.deg(angle)
+        b.Tracer.BackgroundColor3 = getColor(flags.esp_tracer_c1, Color3.new(1,1,1))
+    else
+        b.Tracer.Visible = false
     end
 end
 
@@ -4505,21 +4582,92 @@ Aiming.open_tab()
     local aimingRight = Aiming:column()
     local Combat, CombatVisuals = aimingLeft:multi_section({names = {"Silent", "Visuals"}})
 
+    local SilentSnapline = createDraw("Line", {
+        Color = Color3.fromRGB(227, 144, 191),
+        Thickness = 1,
+        Transparency = 1,
+        Visible = false
+    })
+
     CombatVisuals:toggle({
+        name = "Snapline",
+        flag = "toggle_silent_snapline",
+        default = false
+    }):colorpicker({
+        flag = "color_silent_snapline",
+        color = Color3.fromRGB(227, 144, 191),
+        callback = function(color)
+            if SilentSnapline then SilentSnapline.Color = color end
+        end
+    })
+
+    local targetHUDToggle = CombatVisuals:toggle({
         name = "Target HUD", 
         flag = "toggle_target_hud", 
-        default = false,
+        default = false
     })
 
     local TargetHUD = library:indicator()
     TargetHUD.set_visible(false)
-    TargetHUD.items.Window.Position = dim2(0.5, -161, 1, -180)
+    local TargetHUDBottomMargin = 260
+    local TargetHUDDefaultPos = dim2(0.5, -161, 1, -TargetHUDBottomMargin)
+    TargetHUD.items.Window.Position = TargetHUDDefaultPos
     TargetHUD.items.InfoTitle.Text = "Target"
     
     -- Store connection for cleanup
     local renderConn = run.RenderStepped:Connect(function(dt)
         local silentTarget = getgenv().SilentAimTarget
-        local displayTarget = CurrentTarget or silentTarget
+        local displayTarget = silentTarget
+
+        -- Snapline Logic
+        if flags.toggle_silent_snapline and displayTarget then
+             local char, part
+             if displayTarget:IsA("Player") then 
+                 char = displayTarget.Character
+             elseif displayTarget:IsA("Model") then 
+                 char = displayTarget 
+             elseif displayTarget:IsA("BasePart") then
+                 part = displayTarget
+             end
+             
+             local drawn = false
+             if not part and char then
+                 part = getPartSafe(char, "Head") or char.PrimaryPart or getPartSafe(char, "HumanoidRootPart")
+             end
+             if part then
+                  local visible = true
+                  if flags.toggle_raycast then
+                      local origin = camera.CFrame.Position
+                      local direction = part.Position - origin
+                      local params = RaycastParams.new()
+                      params.FilterType = Enum.RaycastFilterType.Blacklist
+                      local blacklist = {lp.Character}
+                      if char then table.insert(blacklist, char) end
+                      params.FilterDescendantsInstances = blacklist
+                      
+                      local result = workspace:Raycast(origin, direction, params)
+                      if result and not (char and result.Instance and result.Instance:IsDescendantOf(char)) and result.Instance.Name ~= "Handle" then
+                          visible = false
+                      end
+                  end
+
+                  if visible then
+                      local pos, onScreen = camera:WorldToViewportPoint(part.Position)
+                      if onScreen then
+                           SilentSnapline.Visible = true
+                           SilentSnapline.From = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
+                           SilentSnapline.To = Vector2.new(pos.X, pos.Y)
+                           local snapColor = flags.color_silent_snapline
+                           if typeof(snapColor) == "table" and snapColor.Color then snapColor = snapColor.Color end
+                           SilentSnapline.Color = snapColor or Color3.fromRGB(227, 144, 191)
+                           drawn = true
+                      end
+                  end
+             end
+             if not drawn then SilentSnapline.Visible = false end
+        else
+            SilentSnapline.Visible = false
+        end
 
         if flags.toggle_target_hud and displayTarget then
             -- ... (rest of logic) ...
@@ -4533,15 +4681,30 @@ Aiming.open_tab()
             end
 
             if character and character:FindFirstChild("Humanoid") then
-                if player then TargetHUD.change_profile(player) end
+                if player then 
+                    TargetHUD.change_profile(player) 
+                else
+                    -- Handle NPC/Model
+                    if TargetHUD.items and TargetHUD.items.label then
+                         TargetHUD.items.label.set("Target: " .. character.Name)
+                    end
+                    if TargetHUD.items and TargetHUD.items.Profile then
+                         TargetHUD.items.Profile.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+                    end
+                end
                 local hum = character.Humanoid
                 TargetHUD.change_health((hum.Health / hum.MaxHealth) * 100)
                 TargetHUD.set_visible(true)
+                
+                -- No on-target follow logic; HUD remains at its default position and size
             else
                  TargetHUD.set_visible(false)
+                 TargetHUD.items.Window.Position = TargetHUDDefaultPos
             end
         else
             TargetHUD.set_visible(false)
+            TargetHUD.items.Window.Size = dim2(0, 322, 0, 147)
+            TargetHUD.items.Window.Position = TargetHUDDefaultPos
         end
     end)
     table.insert(getgenv().ScriptCleanup, renderConn)
@@ -4626,8 +4789,8 @@ Aiming.open_tab()
         setObjVisible(hrpMaterial, startVis and library.flags["desync_visualize_hrp"])
         
         -- Forward declaration for sliders
-        local sliderX, sliderY, sliderZ
         local sliderPitch, sliderYaw, sliderRoll
+        local sliderX, sliderY, sliderZ
         local desyncDivider
         local rotSpoofer, invertToggle
 
@@ -4911,45 +5074,93 @@ Aiming.open_tab()
             end
         })
 
-        local autoAimConnBegan, autoAimConnEnded
+        local triggerbotConnection
+        local autoAimToggle
+
         ChecksMisc:toggle({
+            name = "Triggerbot",
+            flag = "toggle_triggerbot",
+            default = false,
+            callback = function(v)
+                if autoAimToggle and autoAimToggle.set_element_visible then
+                    autoAimToggle.set_element_visible(v)
+                end
+
+                if triggerbotConnection then triggerbotConnection:Disconnect() triggerbotConnection = nil end
+                
+                if v then
+                    local isShooting = false
+                    local isAiming = false
+                    local vim = game:GetService("VirtualInputManager")
+                    
+                    triggerbotConnection = run.RenderStepped:Connect(function()
+                        local target = getgenv().SilentAimTarget
+                        local character
+                        
+                        if target then
+                            if target:IsA("Player") then
+                                character = target.Character
+                            elseif target:IsA("Model") then
+                                character = target
+                            end
+                        end
+
+                        local shouldAction = false
+                        if character and character:FindFirstChild("HumanoidRootPart") then
+                             local hum = character:FindFirstChild("Humanoid")
+                             if hum and hum.Health > 0 then
+                                 local tool = players.LocalPlayer.Character and players.LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
+                                 if tool then
+                                     shouldAction = true
+                                 end
+                             end
+                        end
+
+                        -- Triggerbot Logic (Left Click)
+                        if shouldAction then
+                            if not isShooting then
+                                isShooting = true
+                                vim:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                            end
+                        else
+                            if isShooting then
+                                isShooting = false
+                                vim:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                            end
+                        end
+
+                        -- Auto Aim Logic (Right Click)
+                        if flags.toggle_auto_aim and shouldAction then
+                            if not isAiming then
+                                isAiming = true
+                                vim:SendMouseButtonEvent(0, 0, 1, true, game, 1)
+                            end
+                        else
+                            if isAiming then
+                                isAiming = false
+                                vim:SendMouseButtonEvent(0, 0, 1, false, game, 1)
+                            end
+                        end
+                    end)
+                else
+                     local vim = game:GetService("VirtualInputManager")
+                     vim:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                     vim:SendMouseButtonEvent(0, 0, 1, false, game, 1)
+                end
+            end
+        })
+
+        autoAimToggle = ChecksMisc:toggle({
             name = "Auto Aim",
             flag = "toggle_auto_aim",
             default = false,
             callback = function(v)
-                local vim = game:GetService("VirtualInputManager")
-                local uis = game:GetService("UserInputService")
-                
-                if v then
-                    -- Check initial state
-                    if uis:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
-                        vim:SendMouseButtonEvent(0, 0, 1, true, game, 1)
-                    end
-                    
-                    if autoAimConnBegan then autoAimConnBegan:Disconnect() end
-                    if autoAimConnEnded then autoAimConnEnded:Disconnect() end
-
-                    autoAimConnBegan = uis.InputBegan:Connect(function(input, gpe)
-                        if gpe then return end
-                        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                            vim:SendMouseButtonEvent(0, 0, 1, true, game, 1)
-                        end
-                    end)
-                    
-                    autoAimConnEnded = uis.InputEnded:Connect(function(input, gpe)
-                        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                            vim:SendMouseButtonEvent(0, 0, 1, false, game, 1)
-                        end
-                    end)
-                else
-                    if autoAimConnBegan then autoAimConnBegan:Disconnect() end
-                    if autoAimConnEnded then autoAimConnEnded:Disconnect() end
-                    autoAimConnBegan = nil
-                    autoAimConnEnded = nil
-                    vim:SendMouseButtonEvent(0, 0, 1, false, game, 1)
-                end
+                -- Logic is handled in triggerbot loop
             end
         })
+        if autoAimToggle and autoAimToggle.set_element_visible then
+            autoAimToggle.set_element_visible(false)
+        end
 
         -- Auto Reload Integration
         local AutoReloadModule = (function()
@@ -4991,6 +5202,8 @@ Aiming.open_tab()
                 
                 if AutoReloadSystem.IgnoreNextReload then
                     AutoReloadSystem.IgnoreNextReload = false
+                    -- Safety Reset to ensure we don't get stuck ignoring
+                    task.delay(1, function() AutoReloadSystem.IgnoreNextReload = false end)
                     return false
                 end
                 
@@ -5002,26 +5215,34 @@ Aiming.open_tab()
                 
                 task.spawn(function()
                     -- Method 1: VirtualInputManager
-                    local success = pcall(function()
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game)
-                        task.wait(0.15) -- Increased hold time for reliability
-                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game)
-                    end)
-                    
-                    -- Method 2: keypress (Fallback for specific executors)
-                    if not success or (keypress and keyrelease) then
-                        pcall(function()
-                            if keypress and keyrelease then
-                                keypress(0x52) -- R key
-                                task.wait(0.15)
-                                keyrelease(0x52)
-                            end
-                        end)
-                    end
+                local success = pcall(function()
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game)
+                    task.wait(0.25) -- Increased hold time for reliability
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game)
                 end)
                 
-                return true
-            end
+                -- Method 2: keypress (Fallback for specific executors)
+                if not success and keypress then
+                    pcall(function()
+                        keypress(0x52)
+                        task.wait(0.25)
+                        keyrelease(0x52)
+                    end)
+                end
+                
+                -- Method 3: Direct Tool Activation (if applicable)
+                if AutoReloadSystem.CurrentWeapon and AutoReloadSystem.CurrentWeapon:FindFirstChild("Reload") then
+                     pcall(function()
+                         local reloadRemote = AutoReloadSystem.CurrentWeapon.Reload
+                         if reloadRemote:IsA("RemoteEvent") then
+                             reloadRemote:FireServer()
+                         end
+                     end)
+                end
+            end)
+                
+            return true
+        end
 
             local function SetupManualReloadDetection()
                 local inputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -5951,7 +6172,20 @@ Aiming.open_tab()
     local ESP = playersLeft:section({name = "Extrasensory Perception"})
     
     ESP:toggle({name = "Enabled", flag = "esp_enabled_dummy", default = false, callback = function() end})
-    ESP:toggle({name = "Team", flag = "esp_self_dummy", default = false, callback = function() end})
+    local goodBadToggle
+    local teamToggle = ESP:toggle({name = "Team", flag = "esp_self_dummy", default = false, callback = function(v)
+        if goodBadToggle and goodBadToggle.set_element_visible then
+            goodBadToggle.set_element_visible(v)
+        end
+    end})
+
+    goodBadToggle = ESP:toggle({name = "Good and Bad", flag = "esp_friend_enemy_color", default = false, callback = function() end})
+    goodBadToggle:colorpicker({flag = "esp_good_color", color = Color3.fromRGB(137, 234, 149), callback = function() end})
+    goodBadToggle:colorpicker({flag = "esp_bad_color", color = Color3.fromRGB(226, 114, 114), callback = function() end})
+
+    if goodBadToggle and goodBadToggle.set_element_visible then
+        goodBadToggle.set_element_visible(false) -- Default hidden until Team is enabled
+    end
 
     library:create("Frame", {
         Parent = ESP.holder,
@@ -5980,7 +6214,7 @@ Aiming.open_tab()
     end})
     tracer:colorpicker({flag = "esp_tracer_c1", color = Color3.fromRGB(100, 100, 255), callback = function() end})
     
-    tracerPosDropdown = ESP:dropdown({name = "Tracer Position", flag = "esp_tracer_pos_dummy", items = {"Bottom", "Top", "Mouse"}, default = "Bottom", callback = function() end})
+    tracerPosDropdown = ESP:dropdown({name = "Tracer Position", flag = "esp_tracer_pos_dummy", items = {"Bottom", "Top", "Center"}, default = "Bottom", callback = function() end})
     if tracerPosDropdown.set_element_visible then
         tracerPosDropdown.set_element_visible(false)
     end
