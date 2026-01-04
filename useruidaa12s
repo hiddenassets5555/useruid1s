@@ -6,6 +6,21 @@ local BlacklistedHWIDs = {
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local SoundService = game:GetService("SoundService")
+
+-- Helper function to play sounds
+local function PlaySound(soundId)
+    pcall(function()
+        local sound = Instance.new("Sound")
+        sound.SoundId = soundId
+        sound.Volume = 0.5
+        sound.Parent = SoundService
+        sound:Play()
+        sound.Ended:Connect(function()
+            sound:Destroy()
+        end)
+    end)
+end
 
 local Loader = {}
 local Products = {}
@@ -30,6 +45,9 @@ local gethui = gethui or function() return game:GetService("CoreGui") end
 pcall(function() ScreenGui.Parent = gethui() end)
 if not ScreenGui.Parent then ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end
 
+-- Play UI open sound
+PlaySound("rbxassetid://3398620867")
+
 local MainFrame = Instance.new("Frame")
 MainFrame.ClipsDescendants = true
 MainFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -50,7 +68,7 @@ Header.BorderColor3 = Color3.fromRGB(0, 0, 0)
 Header.AnchorPoint = Vector2.new(0.5, 0)
 Header.Name = "Header"
 Header.Position = UDim2.new(0.5, 0, 0, 0)
-Header.Size = UDim2.new(0, 374, 0, 28)
+Header.Size = UDim2.new(1, 0, 0, 28)
 Header.ZIndex = 15
 Header.BorderSizePixel = 0
 Header.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -135,6 +153,162 @@ BG_TEXTURE.BorderSizePixel = 0
 BG_TEXTURE.SliceCenter = Rect.new(Vector2.new(1000, 0), Vector2.new(1000, 267))
 BG_TEXTURE.Parent = MainFrame
 BG_TEXTURE.ZIndex = -5
+
+-- Notification cooldown system
+local isShowingNotification = false
+local notificationCooldownEnd = 0
+
+-- Notification function that matches loader UI style
+local function ShowLoaderNotification(text, duration)
+    duration = duration or 3
+    
+    if not ScreenGui or not ScreenGui.Parent or not MainFrame then
+        return
+    end
+    
+    -- Check if notification is currently showing
+    if isShowingNotification then
+        return
+    end
+    
+    -- Check cooldown (3 seconds after notification finishes)
+    local currentTime = tick()
+    if currentTime < notificationCooldownEnd then
+        return
+    end
+    
+    isShowingNotification = true
+    
+    -- Clean up any existing notifications first (from both MainFrame and InfoHolder)
+    for _, child in pairs(MainFrame:GetChildren()) do
+        if child.Name == "LoaderNotification" then
+            child:Destroy()
+        end
+    end
+    
+    -- Create notification as a child of MainFrame, positioned below the UI
+    -- Temporarily disable ClipsDescendants so it can extend below MainFrame
+    local originalClipsDescendants = MainFrame.ClipsDescendants
+    MainFrame.ClipsDescendants = false
+    
+    local notifFrame = Instance.new("Frame")
+    notifFrame.Name = "LoaderNotification"
+    notifFrame.AnchorPoint = Vector2.new(0.5, 0)
+    -- Start position: inside MainFrame at the bottom (will slide out)
+    notifFrame.Position = UDim2.new(0.5, 0, 1, -35)
+    notifFrame.Size = UDim2.new(0, 300, 0, 35) -- Start with full height so it's visible
+    notifFrame.BackgroundColor3 = Color3.fromRGB(loader_config.BackgroundColor[1], loader_config.BackgroundColor[2], loader_config.BackgroundColor[3])
+    notifFrame.BackgroundTransparency = 0
+    notifFrame.BorderSizePixel = 0
+    notifFrame.Parent = MainFrame
+    notifFrame.ZIndex = 10
+    
+    local notifCorner = Instance.new("UICorner")
+    notifCorner.CornerRadius = UDim.new(0, 3)
+    notifCorner.Parent = notifFrame
+    
+    -- UIStroke outline (pink accent) - Create before animation
+    local notifStroke = Instance.new("UIStroke")
+    notifStroke.Color = Color3.fromRGB(227, 144, 191)
+    notifStroke.Transparency = 0.4
+    notifStroke.Thickness = 1
+    notifStroke.Parent = notifFrame
+    
+    -- Dotted background texture
+    local bgTexture = Instance.new("ImageLabel")
+    bgTexture.ScaleType = Enum.ScaleType.Slice
+    bgTexture.ImageTransparency = 0.9800000190734863
+    bgTexture.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    bgTexture.Name = "BG_TEXTURE"
+    bgTexture.Image = "rbxassetid://136562337748317"
+    bgTexture.BackgroundTransparency = 1
+    bgTexture.Size = UDim2.new(1, 1, 1, 1)
+    bgTexture.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    bgTexture.BorderSizePixel = 0
+    bgTexture.SliceCenter = Rect.new(Vector2.new(1000, 0), Vector2.new(1000, 267))
+    bgTexture.Parent = notifFrame
+    bgTexture.ZIndex = -5
+    
+    -- Inner outline (dark gray) - Create before animation
+    local innerStroke = Instance.new("UIStroke")
+    innerStroke.Color = Color3.fromRGB(43, 43, 43)
+    innerStroke.Thickness = 1
+    innerStroke.Parent = notifFrame
+    
+    local notifText = Instance.new("TextLabel")
+    notifText.Visible = true
+    notifText.Size = UDim2.new(1, -16, 1, 0)
+    notifText.Position = UDim2.new(0, 8, 0, 0)
+    notifText.BackgroundTransparency = 1
+    notifText.TextTransparency = 0
+    notifText.Text = text
+    notifText.TextColor3 = Color3.fromRGB(132, 132, 132)
+    notifText.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    notifText.TextSize = 14
+    notifText.TextXAlignment = Enum.TextXAlignment.Left
+    notifText.TextYAlignment = Enum.TextYAlignment.Center
+    notifText.TextStrokeTransparency = 0.5
+    notifText.ZIndex = 11
+    notifText.Parent = notifFrame
+    
+    -- Breathing effect for outlines (animate thickness)
+    local breathingTween = TweenService:Create(notifStroke, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+        Thickness = 1.5
+    })
+    breathingTween:Play()
+    
+    local innerBreathingTween = TweenService:Create(innerStroke, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+        Thickness = 1.4
+    })
+    innerBreathingTween:Play()
+    
+    -- Animate in from inside MainFrame (pop down from MainFrame bottom)
+    local tweenIn = TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0.5, 0, 1, 10),
+        Size = UDim2.new(0, 300, 0, 35)
+    })
+    tweenIn:Play()
+    
+    -- Auto destroy and process queue
+    task.spawn(function()
+        task.wait(duration)
+        
+        -- Stop breathing animations
+        breathingTween:Cancel()
+        innerBreathingTween:Cancel()
+        
+        local tweenOut = TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+            Position = UDim2.new(0.5, 0, 1, -35),
+            Size = UDim2.new(0, 300, 0, 0),
+            BackgroundTransparency = 1
+        })
+        tweenOut:Play()
+        local strokeTween = TweenService:Create(notifStroke, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+            Transparency = 1
+        })
+        strokeTween:Play()
+        local innerStrokeTween = TweenService:Create(innerStroke, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+            Transparency = 1
+        })
+        innerStrokeTween:Play()
+        local textureTween = TweenService:Create(bgTexture, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+            ImageTransparency = 1
+        })
+        textureTween:Play()
+        local textTween = TweenService:Create(notifText, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+            TextTransparency = 1
+        })
+        textTween:Play()
+        tweenOut.Completed:Wait()
+        -- Restore ClipsDescendants before destroying
+        MainFrame.ClipsDescendants = originalClipsDescendants
+        notifFrame:Destroy()
+        
+        -- Set cooldown for 3 seconds after notification finishes
+        isShowingNotification = false
+        notificationCooldownEnd = tick() + 3
+    end)
+end
 
 local ProductHolder = Instance.new("Frame")
 ProductHolder.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -389,6 +563,13 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 Exit_Button.MouseButton1Click:Connect(function()
+    PlaySound("rbxassetid://156286438")
+    -- Stop loading sound if it's playing
+    if getgenv().currentLoadingSound then
+        getgenv().currentLoadingSound:Stop()
+        getgenv().currentLoadingSound:Destroy()
+        getgenv().currentLoadingSound = nil
+    end
     ScreenGui:Destroy()
 end)
 
@@ -465,6 +646,7 @@ function Loader:CreateProduct(config)
     ProductClickable.Parent = ProductFrame
     
     ProductClickable.MouseButton1Click:Connect(function()
+        PlaySound("rbxassetid://156286438")
         for _, otherProduct in pairs(Products) do
             if otherProduct.frame then
                 otherProduct.frame.BackgroundTransparency = 1
@@ -630,6 +812,7 @@ function Loader:CreateKeybind(text, defaultKey, callback)
     KeyButton.Parent = Component_Keybind
     
     KeyButton.MouseButton1Click:Connect(function()
+        PlaySound("rbxassetid://156286438")
         KeyButton.Text = "..."
         local input = game:GetService("UserInputService").InputBegan:Wait()
         if input.UserInputType == Enum.UserInputType.Keyboard then
@@ -696,6 +879,7 @@ function Loader:CreateButton(text, callback)
     UICorner.Parent = Button
     
     Button.MouseButton1Click:Connect(function()
+        PlaySound("rbxassetid://156286438")
         if callback then callback(Button) end
     end)
     
@@ -786,12 +970,11 @@ function Loader:CreateSeparator(text)
 end
 
 LoadButtonClickable.MouseButton1Click:Connect(function()
+    PlaySound("rbxassetid://18595195017")
     -- Check for Keybind Requirement
     if CurrentProduct and CurrentProduct.Name == "Home.lua" then
         if not getgenv().UiBindKey then
-             LoaderName.Text = "You must set a keybind first"
-             task.wait(2)
-             LoaderName.Text = "inject"
+             ShowLoaderNotification("You must set a keybind first", 3)
              return
         end
     end
@@ -815,7 +998,7 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
         })
 
         local headerTween = TweenService:Create(Header, tweenInfo, {
-            Size = UDim2.new(0, 289, 0, 28)
+            Size = UDim2.new(1, 0, 0, 28)
         })
 
         mainFrameTween:Play()
@@ -823,6 +1006,16 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
 
         mainFrameTween.Completed:Connect(function()
             LoaderName.Text = "Loader"
+            
+            -- Play loading/waiting sound
+            local loadingSound = Instance.new("Sound")
+            -- Store reference globally so it can be stopped when UI is destroyed
+            getgenv().currentLoadingSound = loadingSound
+            loadingSound.SoundId = "rbxassetid://9046646008"
+            loadingSound.Volume = 0.5
+            loadingSound.Looped = true
+            loadingSound.Parent = SoundService
+            loadingSound:Play()
 
             local LoadingMessage = Instance.new("TextLabel")
             LoadingMessage.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
@@ -949,6 +1142,15 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                     LoadingMessage:Destroy()
                     Progressbar:Destroy()
                     
+                    -- Stop loading sound
+                    if getgenv().currentLoadingSound then
+                        pcall(function()
+                            getgenv().currentLoadingSound:Stop()
+                            getgenv().currentLoadingSound:Destroy()
+                        end)
+                        getgenv().currentLoadingSound = nil
+                    end
+                    
                     ProductHolder.Visible = true
                     SelectedProductInfo.Visible = true
                     LoadButton.Visible = true
@@ -1010,6 +1212,15 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                     LoadingMessage:Destroy()
                     Progressbar:Destroy()
                     
+                    -- Stop loading sound
+                    if getgenv().currentLoadingSound then
+                        pcall(function()
+                            getgenv().currentLoadingSound:Stop()
+                            getgenv().currentLoadingSound:Destroy()
+                        end)
+                        getgenv().currentLoadingSound = nil
+                    end
+                    
                     -- Key is valid, load script after full loading animation
                     task.wait(0.5)
                     local exitTweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In, 0, false, 0)
@@ -1018,6 +1229,12 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                     exitTween:Play()
                     scaleTween:Play()
                     scaleTween.Completed:Connect(function()
+                        -- Stop loading sound if it's playing
+                        if getgenv().currentLoadingSound then
+                            getgenv().currentLoadingSound:Stop()
+                            getgenv().currentLoadingSound:Destroy()
+                            getgenv().currentLoadingSound = nil
+                        end
                         ScreenGui:Destroy()
                     end)
                     
@@ -1029,6 +1246,15 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                 else
                     LoadingMessage.Text = '<font color="#FF0000">No key</font>'
                     task.wait(1)
+                    
+                    -- Stop loading sound before showing key system
+                    if getgenv().currentLoadingSound then
+                        pcall(function()
+                            getgenv().currentLoadingSound:Stop()
+                            getgenv().currentLoadingSound:Destroy()
+                        end)
+                        getgenv().currentLoadingSound = nil
+                    end
                     
                     -- Hide loading elements and animate back to normal size
                     LoadingMessage:Destroy()
@@ -1137,31 +1363,6 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                     -- Description: Join discord for key
                     Loader:CreateDescription("Join discord for key")
                     
-                    -- Status: undetected
-                    Loader:CreateLabel("status", "undetected", "left")
-                    local StatusLabel = InfoHolder:GetChildren()[#InfoHolder:GetChildren()]
-                    local StatusRightLabel = nil
-                    if StatusLabel and StatusLabel:FindFirstChild("RightTextLabel") then
-                        StatusRightLabel = StatusLabel.RightTextLabel
-                        StatusRightLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-                        
-                        -- Breathing effect for undetected status (stronger)
-                        task.spawn(function()
-                            while StatusRightLabel and StatusRightLabel.Parent do
-                                local breatheOut = TweenService:Create(StatusRightLabel, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-                                    TextTransparency = 0.6
-                                })
-                                local breatheIn = TweenService:Create(StatusRightLabel, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-                                    TextTransparency = 0
-                                })
-                                breatheOut:Play()
-                                breatheOut.Completed:Wait()
-                                breatheIn:Play()
-                                breatheIn.Completed:Wait()
-                            end
-                        end)
-                    end
-                    
                     -- Key: Check for saved key and validate it matches the current valid key
                     local validKey = "Home-e7Abbca2ae03szr240"
                     local savedKey = nil
@@ -1258,6 +1459,7 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                     DiscordButtonCorner.Parent = DiscordButton
                     
                     DiscordButton.MouseButton1Click:Connect(function()
+                        PlaySound("rbxassetid://156286438")
                         if setclipboard then
                             setclipboard("https://discord.gg/78shd8CCeD")
                         end
@@ -1299,6 +1501,7 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                     SubmitButtonCorner.Parent = SubmitButton
                     
                     SubmitButton.MouseButton1Click:Connect(function()
+                        PlaySound("rbxassetid://156286438")
                         local key = KeyTextBox.Text
                         if key == "Home-e7Abbca2ae03szr240" then
                             if KeyRightLabel then
@@ -1397,7 +1600,7 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                                 Size = UDim2.new(0, 288, 0, 188)
                             })
                             local headerTween = TweenService:Create(Header, tweenInfo, {
-                                Size = UDim2.new(0, 289, 0, 28)
+                                Size = UDim2.new(1, 0, 0, 28)
                             })
                             
                             mainFrameTween:Play()
@@ -1485,6 +1688,12 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                                 exitTween:Play()
                                 scaleTween:Play()
                                 scaleTween.Completed:Connect(function()
+                                    -- Stop loading sound if it's playing
+                                    if getgenv().currentLoadingSound then
+                                        getgenv().currentLoadingSound:Stop()
+                                        getgenv().currentLoadingSound:Destroy()
+                                        getgenv().currentLoadingSound = nil
+                                    end
                                     ScreenGui:Destroy()
                                 end)
                                 
@@ -1610,6 +1819,7 @@ local product3 = Loader:CreateProduct({
             getgenv().DevMessage = text 
         end },
         { Type = "Button", Text = "Send Message", Callback = function(btn) 
+            PlaySound("rbxassetid://156286438")
             if btn.Text ~= "Send Message" then return end
             
             -- Blacklist Check
