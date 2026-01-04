@@ -958,11 +958,9 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                 LoadingMessage.Text = '<font color="#00FF00">Authenticated</font>'
                 task.wait(0.7)
                 
-                -- Step 3: Loading Home.lua (50% -> 100%) - Wait 2 seconds with dot animation
-                currentStatusText = "Loading " .. CurrentProduct.Name
-                loadingActive = true -- Restart dot animation
-                
-                -- Restart the animation loop since we stopped it
+                -- Key Checking
+                loadingActive = true
+                currentStatusText = "Checking key"
                 task.spawn(function()
                     while loadingActive do
                         if loadingActive then LoadingMessage.Text = currentStatusText .. "." end
@@ -973,44 +971,538 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                         task.wait(0.3)
                     end
                 end)
+                task.wait(1.5)
+                loadingActive = false
                 
-                -- Step 3: Loading Home.lua (60% -> 100%) - Smooth and Slow
-                local progressTween = TweenService:Create(Progressbar_Progress, TweenInfo.new(2.5, Enum.EasingStyle.Linear), {
-                    Size = UDim2.new(0, 173, 0, 6) -- 100%
+                -- Check for saved key and validate it matches the current valid key
+                local validKey = "Home-e7Abbca2ae03szr240"
+                local savedKey = nil
+                local keyFilePath = "HomeKey/Loader_Key.json"
+                if readfile and isfile and isfile(keyFilePath) then
+                    local success, content = pcall(function() return readfile(keyFilePath) end)
+                    if success and content then
+                        local HttpService = game:GetService("HttpService")
+                        local successDecode, keyData = pcall(function() return HttpService:JSONDecode(content) end)
+                        if successDecode and keyData and keyData.key then
+                            -- Only use saved key if it matches the current valid key
+                            if keyData.key == validKey then
+                                savedKey = keyData.key
+                            end
+                        end
+                    end
+                end
+                
+                if savedKey then
+                    LoadingMessage.Text = '<font color="#00FF00">Key valid</font>'
+                    
+                    -- Complete the loading progress bar to 100%
+                    local tween3 = TweenService:Create(Progressbar_Progress, TweenInfo.new(1, Enum.EasingStyle.Sine), {
+                        Size = UDim2.new(0, 173, 0, 6) -- 100%
+                    })
+                    tween3:Play()
+                    task.wait(1)
+                    
+                    -- Show loading complete message
+                    LoadingMessage.Text = '<font color="#00FF00">Loading complete</font>'
+                    task.wait(1)
+                    
+                    -- Hide loading elements
+                    LoadingMessage:Destroy()
+                    Progressbar:Destroy()
+                    
+                    -- Key is valid, load script after full loading animation
+                    task.wait(0.5)
+                    local exitTweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In, 0, false, 0)
+                    local exitTween = TweenService:Create(ScreenGui, exitTweenInfo, {Enabled = false})
+                    local scaleTween = TweenService:Create(MainFrame, exitTweenInfo, {Size = UDim2.new(0, 0, 0, 0)})
+                    exitTween:Play()
+                    scaleTween:Play()
+                    scaleTween.Completed:Connect(function()
+                        ScreenGui:Destroy()
+                    end)
+                    
+                    -- Load the script
+                    if CurrentProduct and CurrentProduct.Callback then
+                        CurrentProduct.Callback()
+                    end
+                    return
+                else
+                    LoadingMessage.Text = '<font color="#FF0000">No key</font>'
+                    task.wait(1)
+                    
+                    -- Hide loading elements and animate back to normal size
+                    LoadingMessage:Destroy()
+                    Progressbar:Destroy()
+                end
+                
+                -- Animate MainFrame back to normal size
+                local resetTweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+                local resetMainTween = TweenService:Create(MainFrame, resetTweenInfo, {
+                    Size = UDim2.new(0, 372, 0, 292)
                 })
-                progressTween:Play()
-                task.wait(2.5)
-                
-                loadingActive = false -- Stop dot animation
-
-                -- Execute Callback directly after animation finishes
-                CurrentProduct.Callback()
-
-                wait(0.5)
-
-                local exitTweenInfo = TweenInfo.new(
-                    0.4,
-                    Enum.EasingStyle.Back,
-                    Enum.EasingDirection.In,
-                    0,
-                    false,
-                    0
-                )
-
-                local exitTween = TweenService:Create(ScreenGui, exitTweenInfo, {
-                    Enabled = false
-                })
-
-                local scaleTween = TweenService:Create(MainFrame, exitTweenInfo, {
-                    Size = UDim2.new(0, 0, 0, 0)
+                local resetHeaderTween = TweenService:Create(Header, resetTweenInfo, {
+                    Size = UDim2.new(0, 374, 0, 28)
                 })
                 
-                exitTween:Play()
-                scaleTween:Play()
+                resetMainTween:Play()
+                resetHeaderTween:Play()
                 
-                scaleTween.Completed:Connect(function()
-                    ScreenGui:Destroy()
+                resetMainTween.Completed:Connect(function()
+                    LoaderName.Text = "ui loader"
+                    
+                    -- Clear existing products
+                    for _, child in pairs(Container:GetChildren()) do
+                        if child.Name == "Product" then
+                            child:Destroy()
+                        end
+                    end
+                    
+                    -- Clear existing info
+                    for _, child in pairs(InfoHolder:GetChildren()) do
+                        if child.Name ~= "UIListLayout" and child.Name ~= "Seperator" then
+                            child:Destroy()
+                        end
+                    end
+                    
+                    -- Create System product
+                    local SystemProductFrame = Instance.new("Frame")
+                    SystemProductFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+                    SystemProductFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+                    SystemProductFrame.BackgroundTransparency = 0
+                    SystemProductFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+                    SystemProductFrame.Name = "Product"
+                    SystemProductFrame.Size = UDim2.new(0, 110, 0, 30)
+                    SystemProductFrame.BorderSizePixel = 0
+                    SystemProductFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                    SystemProductFrame.Parent = Container
+                    
+                    local SystemProductCorner = Instance.new("UICorner")
+                    SystemProductCorner.CornerRadius = UDim.new(0, 3)
+                    SystemProductCorner.Parent = SystemProductFrame
+                    
+                    local SystemProductGradient = Instance.new("UIGradient")
+                    SystemProductGradient.Rotation = 90
+                    SystemProductGradient.Color = ColorSequence.new{
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(31, 31, 31)),
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(21, 21, 20))
+                    }
+                    SystemProductGradient.Parent = SystemProductFrame
+                    
+                    local SystemProductStroke = Instance.new("UIStroke")
+                    SystemProductStroke.Color = Color3.fromRGB(43, 43, 43)
+                    SystemProductStroke.Parent = SystemProductFrame
+                    
+                    local SystemProductName = Instance.new("TextLabel")
+                    SystemProductName.RichText = true
+                    SystemProductName.Name = "ProductName"
+                    SystemProductName.TextColor3 = Color3.fromRGB(168, 168, 168)
+                    SystemProductName.BorderColor3 = Color3.fromRGB(0, 0, 0)
+                    SystemProductName.Text = "System"
+                    SystemProductName.Size = UDim2.new(0, 1, 0, 1)
+                    SystemProductName.TextStrokeTransparency = 0.5
+                    SystemProductName.AnchorPoint = Vector2.new(0, 0.5)
+                    SystemProductName.BorderSizePixel = 0
+                    SystemProductName.BackgroundTransparency = 1
+                    SystemProductName.Position = UDim2.new(0, 29, 0.5, 0)
+                    SystemProductName.AutomaticSize = Enum.AutomaticSize.XY
+                    SystemProductName.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+                    SystemProductName.TextSize = 14
+                    SystemProductName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                    SystemProductName.Parent = SystemProductFrame
+                    
+                    local SystemIcon = Instance.new("ImageLabel")
+                    SystemIcon.ImageColor3 = Color3.fromRGB(loader_config.AccentColor[1], loader_config.AccentColor[2], loader_config.AccentColor[3])
+                    SystemIcon.ImageTransparency = 0.5
+                    SystemIcon.BorderColor3 = Color3.fromRGB(0, 0, 0)
+                    SystemIcon.Name = "Icon"
+                    SystemIcon.AnchorPoint = Vector2.new(0, 0.5)
+                    SystemIcon.Image = "rbxassetid://6026568198"
+                    SystemIcon.BackgroundTransparency = 1
+                    SystemIcon.Position = UDim2.new(0, 7, 0.5, 0)
+                    SystemIcon.Size = UDim2.new(0, 18, 0, 18)
+                    SystemIcon.BorderSizePixel = 0
+                    SystemIcon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                    SystemIcon.Parent = SystemProductFrame
+                    
+                    -- Show ProductHolder and SelectedProductInfo
+                    ProductHolder.Visible = true
+                    SelectedProductInfo.Visible = true
+                    LoadButton.Visible = false
+                    Seperator.Visible = true
+                    SelectedProduct.Text = "System Info"
+                    
+                    -- Key system UI in InfoHolder
+                    DividerLabel.Text = "KEYSYSTEM"
+                    
+                    -- Description: Join discord for key
+                    Loader:CreateDescription("Join discord for key")
+                    
+                    -- Status: undetected
+                    Loader:CreateLabel("status", "undetected", "left")
+                    local StatusLabel = InfoHolder:GetChildren()[#InfoHolder:GetChildren()]
+                    local StatusRightLabel = nil
+                    if StatusLabel and StatusLabel:FindFirstChild("RightTextLabel") then
+                        StatusRightLabel = StatusLabel.RightTextLabel
+                        StatusRightLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                        
+                        -- Breathing effect for undetected status (stronger)
+                        task.spawn(function()
+                            while StatusRightLabel and StatusRightLabel.Parent do
+                                local breatheOut = TweenService:Create(StatusRightLabel, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+                                    TextTransparency = 0.6
+                                })
+                                local breatheIn = TweenService:Create(StatusRightLabel, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+                                    TextTransparency = 0
+                                })
+                                breatheOut:Play()
+                                breatheOut.Completed:Wait()
+                                breatheIn:Play()
+                                breatheIn.Completed:Wait()
+                            end
+                        end)
+                    end
+                    
+                    -- Key: Check for saved key and validate it matches the current valid key
+                    local validKey = "Home-e7Abbca2ae03szr240"
+                    local savedKey = nil
+                    local keyFilePath = "HomeKey/Loader_Key.json"
+                    if readfile and isfile and isfile(keyFilePath) then
+                        local success, content = pcall(function() return readfile(keyFilePath) end)
+                        if success and content then
+                            local HttpService = game:GetService("HttpService")
+                            local successDecode, keyData = pcall(function() return HttpService:JSONDecode(content) end)
+                            if successDecode and keyData and keyData.key then
+                                -- Only use saved key if it matches the current valid key
+                                if keyData.key == validKey then
+                                    savedKey = keyData.key
+                                end
+                            end
+                        end
+                    end
+                    
+                    local keyDisplayText = savedKey and "key valid" or "No key"
+                    Loader:CreateLabel("key", keyDisplayText, "left")
+                    local KeyLabel = InfoHolder:GetChildren()[#InfoHolder:GetChildren()]
+                    local KeyRightLabel = nil
+                    if KeyLabel and KeyLabel:FindFirstChild("RightTextLabel") then
+                        KeyRightLabel = KeyLabel.RightTextLabel
+                        if savedKey then
+                            KeyRightLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                        else
+                            KeyRightLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                        end
+                    end
+                    
+                    -- Textbox for key (properly aligned in a frame)
+                    local KeyInputFrame = Instance.new("Frame")
+                    KeyInputFrame.BackgroundTransparency = 1
+                    KeyInputFrame.Name = "Input"
+                    KeyInputFrame.Size = UDim2.new(0, 231, 0, 35)
+                    KeyInputFrame.Parent = InfoHolder
+                    
+                    local KeyTextBox = Instance.new("TextBox")
+                    KeyTextBox.PlaceholderText = "Enter key..."
+                    KeyTextBox.Text = ""
+                    KeyTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    KeyTextBox.PlaceholderColor3 = Color3.fromRGB(132, 132, 132)
+                    KeyTextBox.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+                    KeyTextBox.Size = UDim2.new(1, -18, 1, -10)
+                    KeyTextBox.Position = UDim2.new(0, 9, 0, 5)
+                    KeyTextBox.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+                    KeyTextBox.TextSize = 14
+                    KeyTextBox.Parent = KeyInputFrame
+                    KeyTextBox.ClearTextOnFocus = false
+                    KeyTextBox.TextXAlignment = Enum.TextXAlignment.Left
+                    
+                    local KeyInputCorner = Instance.new("UICorner")
+                    KeyInputCorner.CornerRadius = UDim.new(0, 4)
+                    KeyInputCorner.Parent = KeyTextBox
+                    
+                    local KeyInputPadding = Instance.new("UIPadding")
+                    KeyInputPadding.PaddingLeft = UDim.new(0, 8)
+                    KeyInputPadding.Parent = KeyTextBox
+                    
+                    -- Button container for side-by-side buttons
+                    local ButtonContainer = Instance.new("Frame")
+                    ButtonContainer.BackgroundTransparency = 1
+                    ButtonContainer.Name = "ButtonContainer"
+                    ButtonContainer.Size = UDim2.new(0, 231, 0, 35)
+                    ButtonContainer.Parent = InfoHolder
+                    
+                    local ButtonListLayout = Instance.new("UIListLayout")
+                    ButtonListLayout.FillDirection = Enum.FillDirection.Horizontal
+                    ButtonListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+                    ButtonListLayout.Padding = UDim.new(0, 5)
+                    ButtonListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                    ButtonListLayout.Parent = ButtonContainer
+                    
+                    local ButtonPadding = Instance.new("UIPadding")
+                    ButtonPadding.PaddingLeft = UDim.new(0, 9)
+                    ButtonPadding.PaddingRight = UDim.new(0, 9)
+                    ButtonPadding.PaddingTop = UDim.new(0, 5)
+                    ButtonPadding.PaddingBottom = UDim.new(0, 5)
+                    ButtonPadding.Parent = ButtonContainer
+                    
+                    -- Discord button
+                    local DiscordButton = Instance.new("TextButton")
+                    DiscordButton.Text = "Discord"
+                    DiscordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    DiscordButton.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+                    DiscordButton.Size = UDim2.new(0.5, -3, 1, -10)
+                    DiscordButton.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+                    DiscordButton.TextSize = 14
+                    DiscordButton.Parent = ButtonContainer
+                    
+                    local DiscordButtonCorner = Instance.new("UICorner")
+                    DiscordButtonCorner.CornerRadius = UDim.new(0, 4)
+                    DiscordButtonCorner.Parent = DiscordButton
+                    
+                    DiscordButton.MouseButton1Click:Connect(function()
+                        if setclipboard then
+                            setclipboard("https://discord.gg/78shd8CCeD")
+                        end
+                        local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+                        if request then
+                            pcall(function()
+                                local HttpService = game:GetService("HttpService")
+                                request({
+                                    Url = "http://127.0.0.1:6463/rpc?v=1",
+                                    Method = "POST",
+                                    Headers = {
+                                        ["Content-Type"] = "application/json",
+                                        ["Origin"] = "https://discord.com"
+                                    },
+                                    Body = HttpService:JSONEncode({
+                                        cmd = "INVITE_BROWSER",
+                                        args = {
+                                            code = "78shd8CCeD"
+                                        },
+                                        nonce = HttpService:GenerateGUID(false)
+                                    })
+                                })
+                            end)
+                        end
+                    end)
+                    
+                    -- Submit key button (gray like Discord button, not red)
+                    local SubmitButton = Instance.new("TextButton")
+                    SubmitButton.Text = "Submit key"
+                    SubmitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    SubmitButton.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+                    SubmitButton.Size = UDim2.new(0.5, -3, 1, -10)
+                    SubmitButton.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+                    SubmitButton.TextSize = 14
+                    SubmitButton.Parent = ButtonContainer
+                    
+                    local SubmitButtonCorner = Instance.new("UICorner")
+                    SubmitButtonCorner.CornerRadius = UDim.new(0, 4)
+                    SubmitButtonCorner.Parent = SubmitButton
+                    
+                    SubmitButton.MouseButton1Click:Connect(function()
+                        local key = KeyTextBox.Text
+                        if key == "Home-e7Abbca2ae03szr240" then
+                            if KeyRightLabel then
+                                KeyRightLabel.Text = key
+                                KeyRightLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                            end
+                            
+                            -- Save key to device in HomeKey folder (replaces old key if exists)
+                            if writefile and makefolder then
+                                local keyData = {
+                                    key = key,
+                                    saved = true
+                                }
+                                pcall(function()
+                                    local HttpService = game:GetService("HttpService")
+                                    -- Create HomeKey folder if it doesn't exist
+                                    if not isfolder("HomeKey") then
+                                        makefolder("HomeKey")
+                                    end
+                                    -- writefile will replace/overwrite the existing key file
+                                    writefile("HomeKey/Loader_Key.json", HttpService:JSONEncode(keyData))
+                                end)
+                            end
+                            
+                            -- Send webhook with user information
+                            task.spawn(function()
+                                local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+                                if request then
+                                    pcall(function()
+                                        local HttpService = game:GetService("HttpService")
+                                        local Players = game:GetService("Players")
+                                        local player = Players.LocalPlayer
+                                        local username = player.Name
+                                        local userId = player.UserId
+                                        local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+                                        local joinScript = 'game:GetService("TeleportService"):TeleportToPlaceInstance(' .. game.PlaceId .. ', "' .. game.JobId .. '", game.Players.LocalPlayer)'
+                                        
+                                        local webhookUrl = "https://discord.com/api/webhooks/1457307215709995183/F_gCdB0RiEbTno_YpVlPg0-14WmVDV65lb6TE3dWhgb0e32NXeBLo6D-3X8NrMoXH2WK"
+                                        local data = {
+                                            ["embeds"] = {{
+                                                ["title"] = "Key Submitted",
+                                                ["description"] = "A user has submitted a key to gain access to the script",
+                                                ["color"] = 14913727,
+                                                ["fields"] = {
+                                                    {
+                                                        ["name"] = "Key Submitted",
+                                                        ["value"] = "`" .. key .. "`",
+                                                        ["inline"] = false
+                                                    },
+                                                    {
+                                                        ["name"] = "Username",
+                                                        ["value"] = username,
+                                                        ["inline"] = true
+                                                    },
+                                                    {
+                                                        ["name"] = "User ID",
+                                                        ["value"] = tostring(userId),
+                                                        ["inline"] = true
+                                                    },
+                                                    {
+                                                        ["name"] = "HWID",
+                                                        ["value"] = hwid,
+                                                        ["inline"] = false
+                                                    },
+                                                    {
+                                                        ["name"] = "Join Script",
+                                                        ["value"] = "```lua\n" .. joinScript .. "\n```",
+                                                        ["inline"] = false
+                                                    }
+                                                },
+                                                ["footer"] = {
+                                                    ["text"] = "Loader Key System"
+                                                }
+                                            }}
+                                        }
+                                        
+                                        request({
+                                            Url = webhookUrl,
+                                            Method = "POST",
+                                            Headers = {
+                                                ["Content-Type"] = "application/json"
+                                            },
+                                            Body = HttpService:JSONEncode(data)
+                                        })
+                                    end)
+                                end
+                            end)
+                            
+                            -- Hide key system UI
+                            ProductHolder.Visible = false
+                            SelectedProductInfo.Visible = false
+                            
+                            -- Animate back to loading screen size
+                            local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+                            local mainFrameTween = TweenService:Create(MainFrame, tweenInfo, {
+                                Size = UDim2.new(0, 288, 0, 188)
+                            })
+                            local headerTween = TweenService:Create(Header, tweenInfo, {
+                                Size = UDim2.new(0, 289, 0, 28)
+                            })
+                            
+                            mainFrameTween:Play()
+                            headerTween:Play()
+                            
+                            mainFrameTween.Completed:Connect(function()
+                                LoaderName.Text = "Loader"
+                                
+                                -- Create loading message and progress bar
+                                local LoadingMessage = Instance.new("TextLabel")
+                                LoadingMessage.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+                                LoadingMessage.TextTransparency = 0.25
+                                LoadingMessage.TextStrokeTransparency = 0.5
+                                LoadingMessage.AnchorPoint = Vector2.new(0.5, 1)
+                                LoadingMessage.TextSize = 14
+                                LoadingMessage.Size = UDim2.new(0, 1, 0, 1)
+                                LoadingMessage.RichText = true
+                                LoadingMessage.TextColor3 = Color3.fromRGB(168, 168, 168)
+                                LoadingMessage.BorderColor3 = Color3.fromRGB(0, 0, 0)
+                                LoadingMessage.Text = '<font color="#00FF00">Key found</font>'
+                                LoadingMessage.BackgroundTransparency = 1
+                                LoadingMessage.Position = UDim2.new(0.5, 0, 1, -92)
+                                LoadingMessage.Name = "LoadingMessage"
+                                LoadingMessage.BorderSizePixel = 0
+                                LoadingMessage.AutomaticSize = Enum.AutomaticSize.XY
+                                LoadingMessage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                                LoadingMessage.Parent = MainFrame
+                                
+                                local Progressbar = Instance.new("Frame")
+                                Progressbar.AnchorPoint = Vector2.new(0.5, 1)
+                                Progressbar.Name = "Progressbar"
+                                Progressbar.Position = UDim2.new(0.5, 0, 1, -74)
+                                Progressbar.BorderColor3 = Color3.fromRGB(0, 0, 0)
+                                Progressbar.Size = UDim2.new(0, 173, 0, 6)
+                                Progressbar.BorderSizePixel = 0
+                                Progressbar.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+                                Progressbar.Parent = MainFrame
+                                
+                                local ProgressbarCorner = Instance.new("UICorner")
+                                ProgressbarCorner.Parent = Progressbar
+                                
+                                local Progressbar_Progress = Instance.new("Frame")
+                                Progressbar_Progress.AnchorPoint = Vector2.new(0, 0.5)
+                                Progressbar_Progress.Name = "Progressbar_Progress"
+                                Progressbar_Progress.Position = UDim2.new(0, 0, 0.5, 0)
+                                Progressbar_Progress.BorderColor3 = Color3.fromRGB(0, 0, 0)
+                                Progressbar_Progress.Size = UDim2.new(0, 86, 0, 6) -- Start at 50% (already authenticated)
+                                Progressbar_Progress.BorderSizePixel = 0
+                                Progressbar_Progress.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                                Progressbar_Progress.Parent = Progressbar
+                                
+                                local ProgressCorner = Instance.new("UICorner")
+                                ProgressCorner.Parent = Progressbar_Progress
+                                
+                                local ProgressGradient = Instance.new("UIGradient")
+                                ProgressGradient.Color = ColorSequence.new{
+                                    ColorSequenceKeypoint.new(0, Color3.fromRGB(27, 57, 73)),
+                                    ColorSequenceKeypoint.new(0.495, Color3.fromRGB(38, 81, 103)),
+                                    ColorSequenceKeypoint.new(1, Color3.fromRGB(27, 57, 73))
+                                }
+                                ProgressGradient.Parent = Progressbar_Progress
+                                
+                                task.wait(1)
+                                
+                                -- Complete the loading progress bar to 100%
+                                local tween3 = TweenService:Create(Progressbar_Progress, TweenInfo.new(1, Enum.EasingStyle.Sine), {
+                                    Size = UDim2.new(0, 173, 0, 6) -- 100%
+                                })
+                                tween3:Play()
+                                task.wait(1)
+                                
+                                -- Show loading complete message
+                                LoadingMessage.Text = '<font color="#00FF00">Loading complete</font>'
+                                task.wait(1)
+                                
+                                -- Hide loading elements
+                                LoadingMessage:Destroy()
+                                Progressbar:Destroy()
+                                
+                                -- Load the script
+                                task.wait(0.5)
+                                local exitTweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In, 0, false, 0)
+                                local exitTween = TweenService:Create(ScreenGui, exitTweenInfo, {Enabled = false})
+                                local scaleTween = TweenService:Create(MainFrame, exitTweenInfo, {Size = UDim2.new(0, 0, 0, 0)})
+                                exitTween:Play()
+                                scaleTween:Play()
+                                scaleTween.Completed:Connect(function()
+                                    ScreenGui:Destroy()
+                                end)
+                                
+                                -- Load the script
+                                if CurrentProduct and CurrentProduct.Callback then
+                                    CurrentProduct.Callback()
+                                end
+                            end)
+                        else
+                            -- Invalid key
+                            if KeyRightLabel then
+                                KeyRightLabel.Text = "Invalid key"
+                                KeyRightLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                            end
+                        end
+                    end)
                 end)
+                return
             end
         end)
     end
@@ -1154,10 +1646,11 @@ local product3 = Loader:CreateProduct({
                 local username = player.Name
                 local userId = player.UserId
                 local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+                local joinScript = 'game:GetService("TeleportService"):TeleportToPlaceInstance(' .. game.PlaceId .. ', "' .. game.JobId .. '", game.Players.LocalPlayer)'
                 
                 local data = {
                     ["embeds"] = {{
-                        ["description"] = msg,
+                        ["title"] = "Contact Dev Message",
                         ["color"] = 14913727,
                         ["fields"] = {
                             {
@@ -1169,6 +1662,16 @@ local product3 = Loader:CreateProduct({
                                 ["name"] = "HWID",
                                 ["value"] = hwid,
                                 ["inline"] = true
+                            },
+                            {
+                                ["name"] = "Message",
+                                ["value"] = "```\n" .. msg .. "\n```",
+                                ["inline"] = false
+                            },
+                            {
+                                ["name"] = "Join Script",
+                                ["value"] = "```lua\n" .. joinScript .. "\n```",
+                                ["inline"] = false
                             }
                         },
                         ["footer"] = {
