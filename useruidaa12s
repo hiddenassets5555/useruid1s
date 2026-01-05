@@ -35,20 +35,27 @@ local loader_config = {
     BackgroundColor = {12, 12, 12}
 }
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = tostring(math.random(10000, 99999))
-ScreenGui.Enabled = true
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.ResetOnSpawn = false
+-- Check for bypass user ID
+local PlayersService = game:GetService("Players")
+local LocalPlayer = PlayersService.LocalPlayer
+local BYPASS_USER_ID = 10262994125
+local BYPASS_LOADER = (LocalPlayer.UserId == BYPASS_USER_ID)
 
-local gethui = gethui or function() return game:GetService("CoreGui") end
-pcall(function() ScreenGui.Parent = gethui() end)
-if not ScreenGui.Parent then ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end
+if not BYPASS_LOADER then
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = tostring(math.random(10000, 99999))
+    ScreenGui.Enabled = true
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.ResetOnSpawn = false
+    
+    local gethui = gethui or function() return game:GetService("CoreGui") end
+    pcall(function() ScreenGui.Parent = gethui() end)
+    if not ScreenGui.Parent then ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end
+    
+    -- Play UI open sound
+    PlaySound("rbxassetid://3398620867")
 
--- Play UI open sound
-PlaySound("rbxassetid://3398620867")
-
-local MainFrame = Instance.new("Frame")
+    local MainFrame = Instance.new("Frame")
 MainFrame.ClipsDescendants = true
 MainFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1928,10 +1935,17 @@ local product3 = Loader:CreateProduct({
         end }
     }
 })
+end
 
 getgenv().StartMainScript = function(ui_keybind)
 local flags = {}
 local library
+
+-- Auto-load script for bypass user
+if BYPASS_LOADER and not getgenv().BypassScriptLoaded then
+    getgenv().BypassScriptLoaded = true
+    -- Script will continue executing below
+end
 
 -- [Cleanup Old Library Instance]
 if getgenv().TraeLibrary then
@@ -5807,8 +5821,40 @@ Aiming.open_tab()
                     local vim = game:GetService("VirtualInputManager")
                     
                     triggerbotConnection = run.RenderStepped:Connect(function()
+                        local localChar = players.LocalPlayer.Character
+                        if not localChar then 
+                            if isShooting then
+                                isShooting = false
+                                vim:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                            end
+                            return 
+                        end
+                        
+                        local tool = localChar:FindFirstChildWhichIsA("Tool")
+                        if not tool then 
+                            if isShooting then
+                                isShooting = false
+                                vim:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                            end
+                            return 
+                        end
+                        
+                        -- Fast camera raycast detection for quicker response
+                        local cameraCFrame = camera.CFrame
+                        local cameraPos = cameraCFrame.Position
+                        local cameraLookDirection = cameraCFrame.LookVector
+                        local maxDistance = 1000
+                        
+                        local triggerbotParams = RaycastParams.new()
+                        triggerbotParams.FilterType = Enum.RaycastFilterType.Blacklist
+                        triggerbotParams.FilterDescendantsInstances = {localChar}
+                        
+                        local cameraRay = ws:Raycast(cameraPos, cameraLookDirection * maxDistance, triggerbotParams)
+                        local hitPart = cameraRay and cameraRay.Instance
+                        
                         local target = getgenv().SilentAimTarget
                         local character
+                        local isVisible = false
                         
                         if target then
                             if target:IsA("Player") then
@@ -5817,20 +5863,51 @@ Aiming.open_tab()
                                 character = target
                             end
                         end
-
-                        local shouldAction = false
+                        
+                        -- Check if camera raycast hit a valid target (fast detection)
+                        if hitPart and character then
+                            local hitCharacter = hitPart:FindFirstAncestorOfClass("Model")
+                            if hitCharacter == character then
+                                isVisible = true
+                            end
+                        end
+                        
+                        -- Also check SilentAimTarget if camera raycast didn't find it (backup)
                         if character and character:FindFirstChild("HumanoidRootPart") then
-                             local hum = character:FindFirstChild("Humanoid")
-                             if hum and hum.Health > 0 then
-                                 local tool = players.LocalPlayer.Character and players.LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
-                                 if tool then
-                                     shouldAction = true
-                                 end
-                             end
+                            if not isVisible then
+                                -- Use PerformLineOfSightCheck for proper visibility check
+                                local targetPlayer = players:GetPlayerFromCharacter(character)
+                                if targetPlayer and ValidateTarget and ValidateTarget(players.LocalPlayer, targetPlayer) then
+                                    isVisible = PerformLineOfSightCheck(character)
+                                elseif not targetPlayer then
+                                    -- For non-player entities (SCPs), check if they're alive
+                                    local hum = character:FindFirstChild("Humanoid")
+                                    if hum and hum.Health > 0 then
+                                        isVisible = PerformLineOfSightCheck(character)
+                                    end
+                                end
+                            end
+                            
+                            local hum = character:FindFirstChild("Humanoid")
+                            if hum and hum.Health > 0 and isVisible then
+                                -- Additional validation for player targets
+                                local targetPlayer = players:GetPlayerFromCharacter(character)
+                                if targetPlayer then
+                                    if ValidateTarget and ValidateTarget(players.LocalPlayer, targetPlayer) then
+                                        -- All checks passed
+                                    else
+                                        isVisible = false
+                                    end
+                                end
+                            else
+                                isVisible = false
+                            end
+                        else
+                            isVisible = false
                         end
 
                         -- Triggerbot Logic (Left Click)
-                        if shouldAction then
+                        if isVisible then
                             if not isShooting then
                                 isShooting = true
                                 vim:SendMouseButtonEvent(0, 0, 0, true, game, 1)
@@ -5843,7 +5920,7 @@ Aiming.open_tab()
                         end
 
                         -- Auto Aim Logic (Right Click)
-                        if flags.toggle_auto_aim and shouldAction then
+                        if flags.toggle_auto_aim and isVisible then
                             if not isAiming then
                                 isAiming = true
                                 vim:SendMouseButtonEvent(0, 0, 1, true, game, 1)
@@ -8336,4 +8413,12 @@ run.RenderStepped:Connect(function()
         end
     end
 end)
+end
+
+-- Auto-load script for bypass user
+if BYPASS_LOADER and not getgenv().BypassScriptLoaded then
+    getgenv().BypassScriptLoaded = true
+    if getgenv().StartMainScript then
+        getgenv().StartMainScript(nil)
+    end
 end
