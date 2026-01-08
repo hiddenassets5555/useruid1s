@@ -5436,8 +5436,15 @@ Aiming.open_tab()
     }):colorpicker({
         flag = "color_silent_snapline",
         color = Color3.fromRGB(255, 255, 255),
-        callback = function(color)
-            if SilentSnapline then SilentSnapline.Color = color end
+        alpha = 1,
+        callback = function(color, alpha)
+            if SilentSnapline then 
+                SilentSnapline.Color = color
+                -- Alpha directly maps to transparency (no inversion)
+                -- alpha = 0 → transparency = 0 (visible)
+                -- alpha = 1 → transparency = 1 (invisible)
+                SilentSnapline.Transparency = alpha or 0
+            end
         end
     })
 
@@ -5500,58 +5507,68 @@ Aiming.open_tab()
              end
 
              if targetWorldPos then
-                  local visible = true
-                  if flags.toggle_raycast then
-                      local origin = currentCamera.CFrame.Position
-                      local direction = targetWorldPos - origin
-                      local params = RaycastParams.new()
-                      params.FilterType = Enum.RaycastFilterType.Blacklist
-                      local blacklist = {lp.Character}
-                      if char then table.insert(blacklist, char) end
-                      params.FilterDescendantsInstances = blacklist
-                      
-                      local result = workspace:Raycast(origin, direction, params)
-                      if result and not (char and result.Instance and result.Instance:IsDescendantOf(char)) and result.Instance.Name ~= "Handle" then
-                          visible = false
-                      end
-                  end
-
-                  if visible then
-                      -- Recalculate screen-space head position using the current camera/FOV each frame.
-                      local pos, onScreen = currentCamera:WorldToViewportPoint(targetWorldPos)
-                      if onScreen and pos.Z > 0 then
-                           SilentSnapline.Visible = true
-                           local viewportSize = currentCamera.ViewportSize
-                           local fromPos = Vector2.new(viewportSize.X/2, viewportSize.Y/2)
-                           -- Use exact coordinates for accurate alignment - onScreen means coordinates are valid
-                           local toPos = Vector2.new(pos.X, pos.Y)
-                           SilentSnapline.From = fromPos
-                           SilentSnapline.To = toPos
-                           local snapColor = flags.color_silent_snapline
-                           if typeof(snapColor) == "table" and snapColor.Color then snapColor = snapColor.Color end
-                           SilentSnapline.Color = snapColor or Color3.fromRGB(255, 255, 255)
-                           
-                           -- Create animated black dot on snapline
-                           if not SnaplineAnimatedDot then
-                               SnaplineAnimatedDot = createDraw("Circle", {
-                                   Visible = true,
-                                   Color = Color3.fromRGB(0, 0, 0),
-                                   Thickness = 1,
-                                   Filled = true,
-                                   Radius = 4,
-                                   Transparency = 0
-                               })
+                  -- Recalculate screen-space head position using the current camera/FOV each frame.
+                  local pos, onScreen = currentCamera:WorldToViewportPoint(targetWorldPos)
+                  if onScreen and pos.Z > 0 then
+                       SilentSnapline.Visible = true
+                       local viewportSize = currentCamera.ViewportSize
+                       local fromPos = Vector2.new(viewportSize.X/2, viewportSize.Y/2)
+                       -- Use exact coordinates for accurate alignment - onScreen means coordinates are valid
+                       local toPos = Vector2.new(pos.X, pos.Y)
+                       SilentSnapline.From = fromPos
+                       SilentSnapline.To = toPos
+                       
+                       -- Apply color and transparency from color picker
+                       local snapColorData = flags.color_silent_snapline
+                       local snapColor = Color3.fromRGB(255, 255, 255)
+                       -- Default: alpha = 1 (opaque) means transparency = 0 (visible)
+                       local transparency = 0
+                       
+                       -- Extract color and transparency from color picker flag
+                       if snapColorData then
+                           if type(snapColorData) == "table" then
+                               if snapColorData.Color then
+                                   snapColor = snapColorData.Color
+                               end
+                               -- Alpha directly maps to transparency (no inversion)
+                               -- alpha = 0 → transparency = 0 (visible)
+                               -- alpha = 1 → transparency = 1 (invisible)
+                               if snapColorData.Transparency ~= nil then
+                                   transparency = snapColorData.Transparency
+                               end
+                           elseif typeof(snapColorData) == "Color3" then
+                               snapColor = snapColorData
+                               -- Default alpha is 1 (opaque/visible), so transparency = 0 (visible)
+                               transparency = 0
                            end
-                           local time = tick()
-                           local animationSpeed = 2 -- Speed of dot movement (cycles per second)
-                           local progress = (time * animationSpeed) % 1 -- 0 to 1
-                           -- Animate dot along the line
-                           local dotPos = fromPos:Lerp(toPos, progress)
-                           SnaplineAnimatedDot.Position = dotPos
-                           SnaplineAnimatedDot.Visible = true
-                           
-                           drawn = true
-                      end
+                       end
+                       
+                       -- Ensure snapline is visible and properly configured
+                       SilentSnapline.Color = snapColor
+                       SilentSnapline.Transparency = transparency
+                       SilentSnapline.Visible = true
+                       SilentSnapline.Thickness = 1
+                       
+                       -- Create animated black dot on snapline
+                       if not SnaplineAnimatedDot then
+                           SnaplineAnimatedDot = createDraw("Circle", {
+                               Visible = true,
+                               Color = Color3.fromRGB(0, 0, 0),
+                               Thickness = 1,
+                               Filled = true,
+                               Radius = 4,
+                               Transparency = 0
+                           })
+                       end
+                       local time = tick()
+                       local animationSpeed = 2 -- Speed of dot movement (cycles per second)
+                       local progress = (time * animationSpeed) % 1 -- 0 to 1
+                       -- Animate dot along the line
+                       local dotPos = fromPos:Lerp(toPos, progress)
+                       SnaplineAnimatedDot.Position = dotPos
+                       SnaplineAnimatedDot.Visible = true
+                       
+                       drawn = true
                   end
              end
              if not drawn then 
@@ -5950,11 +5967,34 @@ Aiming.open_tab()
             end)
         end
 
-        Movement:toggle({
+        noFallDamageToggle = Movement:toggle({
             name = "No Fall Damage",
             flag = "no_fall_damage",
             default = false,
             callback = function(v)
+                -- If we're being disabled from noclip, skip the noclip check
+                if noFallDamageDisabling then
+                    -- Just handle the disable logic
+                    if not v then
+                        if noFallConn then noFallConn:Disconnect() end
+                        noFallConn = nil
+                        if noFallCharConn then noFallCharConn:Disconnect() end
+                        noFallCharConn = nil
+                    end
+                    return
+                end
+                
+                -- If noclip is enabled, prevent no fall damage from being enabled
+                if v and library.flags["toggle_noclip"] then
+                    noFallDamageDisabling = true
+                    task.spawn(function()
+                        noFallDamageToggle.set(false)
+                        task.wait()
+                        noFallDamageDisabling = false
+                    end)
+                    return
+                end
+                
                 if v then
                     local char = players.LocalPlayer.Character
                     if char then setupNoFall(char) end
@@ -6661,7 +6701,7 @@ Aiming.open_tab()
                     Thickness = 0.5,
                     NumSides = 64,
                     Color = SilentFOVColor or Color3.fromRGB(255, 255, 255),
-                    Transparency = SilentFOVAlpha or 1,
+                    Transparency = SilentFOVAlpha or 0,
                     Filled = false,
                     Visible = true
                 })
@@ -6717,9 +6757,13 @@ Aiming.open_tab()
         name = "FOV Color",
         flag = "colorpicker_fov_circle_silent",
         color = Color3.fromRGB(255, 255, 255),
+        alpha = 1,
         callback = function(color, alpha)
             SilentFOVColor = color or Color3.fromRGB(255, 255, 255)
-            SilentFOVAlpha = alpha or 1
+            -- Alpha directly maps to transparency (no inversion)
+            -- alpha = 0 → transparency = 0 (visible)
+            -- alpha = 1 → transparency = 1 (invisible)
+            SilentFOVAlpha = alpha or 0
             if SilentFOVCircle then
                 SilentFOVCircle.Color = SilentFOVColor
                 SilentFOVCircle.Transparency = SilentFOVAlpha
@@ -6756,6 +6800,8 @@ Aiming.open_tab()
     local PlayersService = game:GetService("Players")
     local RunService = game:GetService("RunService")
     local antiVoidToggle -- Forward declaration
+    local noFallDamageToggle -- Forward declaration
+    local noFallDamageDisabling = false -- Flag to prevent recursion
     do
     local noclipConn
     local noclipDescendantConn
@@ -6812,6 +6858,21 @@ Aiming.open_tab()
             noclipActive = v
             if antiVoidToggle and antiVoidToggle.set_element_visible then
                 antiVoidToggle.set_element_visible(v)
+            end
+            -- If noclip is enabled, disable no fall damage
+            if v and library.flags["no_fall_damage"] then
+                noFallDamageDisabling = true
+                -- Try using the toggle's set method first, fallback to config_flags
+                if noFallDamageToggle and noFallDamageToggle.set then
+                    noFallDamageToggle.set(false)
+                elseif library.config_flags and library.config_flags["no_fall_damage"] then
+                    library.config_flags["no_fall_damage"](false)
+                end
+                -- Reset flag after a frame to allow normal operation
+                task.spawn(function()
+                    task.wait()
+                    noFallDamageDisabling = false
+                end)
             end
             if v then
                 if noclipConn then noclipConn:Disconnect() end
@@ -9032,16 +9093,44 @@ Aiming.open_tab()
                  local target = getgenv().SilentAimTarget
                  local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
                  
+                 -- Ensure the camera FOV used for projection matches what you're seeing this frame
+                 local currentCamera = ws.CurrentCamera
+                 if currentCamera then
+                     if flags.visuals_fov and flags.visuals_fov_amount then
+                         currentCamera.FieldOfView = flags.visuals_fov_amount
+                     else
+                         currentCamera.FieldOfView = defaultCameraFOV
+                     end
+                 end
+                 
                  local desiredPos = center
                  local activeTarget = false
 
-                 if onTarget and target and target:FindFirstChild("Head") then
-                      local head = target.Head
-                      local pos, onScreen = camera:WorldToViewportPoint(head.Position)
+                 if onTarget and target then
+                      local char
+                      if target:IsA("Player") then
+                          char = target.Character
+                      elseif target:IsA("Model") then
+                          char = target
+                      end
                       
-                      if onScreen then
-                           desiredPos = Vector2.new(pos.X, pos.Y)
-                           activeTarget = true
+                      if char then
+                          local head = char:FindFirstChild("Head")
+                          if not head then
+                              local hrp = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
+                              if hrp then
+                                  head = hrp
+                              end
+                          end
+                          
+                          if head then
+                               local pos, onScreen = currentCamera:WorldToViewportPoint(head.Position)
+                               
+                               if onScreen and pos.Z > 0 then
+                                    desiredPos = Vector2.new(pos.X, pos.Y)
+                                    activeTarget = true
+                               end
+                          end
                       end
                  end
 
