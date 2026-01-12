@@ -44,6 +44,14 @@ end
 
 -- HWID Blacklist System
 local BlacklistedHWIDs = {
+    "2493c3cc-d5e0-4c15-9367-a2dd9830ee99",
+    "eacf1d19-f6bb-410b-b3a3-f3f15def8cc8",
+    "b2a33bbb-bb62-44a4-86e3-da949b99b237",
+    "BB00698D-B88A-4F8E-A9E3-B9A8C9936CEC",
+    "eacf1d19-f6bb-410b-b3a3-f3f15def8cc8",
+    "5e6aa368-84ea-4932-903a-4bfc00f22fa6",
+    "cd6e66ae-6e1f-45f6-bd76-50d0549fb1ac",
+    "",
     "",
     ""
 }
