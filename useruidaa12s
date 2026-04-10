@@ -1,5 +1,5 @@
 -- Developer Bypass System
-local DEVELOPER_USER_ID = 9222112993
+local DEVELOPER_USER_ID = 10228461775
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local isDeveloper = LocalPlayer and LocalPlayer.UserId == DEVELOPER_USER_ID
@@ -82,10 +82,11 @@ local RightLabel = nil
 
 local loader_config = {
     LoaderName = "Loader",
-    HeaderColor = {43, 42, 42},
-    AccentColor = {128, 128, 128},
-    BackgroundColor = {20, 20, 20}
+    HeaderColor = {18, 18, 18},
+    AccentColor = {161, 140, 174},
+    BackgroundColor = {14, 13, 13}
 }
+local LOADER_VALID_KEY = "Home-e7Abbca2ae03szr240"
 
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = tostring(math.random(10000, 99999))
@@ -150,8 +151,8 @@ Liner.Parent = Header
 
 local UIGradientLiner = Instance.new("UIGradient")
 UIGradientLiner.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(128, 128, 128)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(128, 128, 128))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(loader_config.AccentColor[1], loader_config.AccentColor[2], loader_config.AccentColor[3])),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(loader_config.AccentColor[1], loader_config.AccentColor[2], loader_config.AccentColor[3]))
 }
 UIGradientLiner.Transparency = NumberSequence.new(0.4)
 UIGradientLiner.Parent = Liner
@@ -159,7 +160,7 @@ UIGradientLiner.Parent = Liner
 local LoaderName = Instance.new("TextLabel")
 LoaderName.RichText = true
 LoaderName.Name = "LoaderName"
-LoaderName.TextColor3 = Color3.fromRGB(168, 168, 168)
+LoaderName.TextColor3 = Color3.fromRGB(255, 255, 255)
 LoaderName.BorderColor3 = Color3.fromRGB(0, 0, 0)
 LoaderName.Text = loader_config.LoaderName
 LoaderName.Size = UDim2.new(0, 1, 0, 1)
@@ -175,7 +176,7 @@ LoaderName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 LoaderName.Parent = Header
 
 local Exit_Button = Instance.new("ImageButton")
-Exit_Button.ImageColor3 = Color3.fromRGB(168, 168, 168)
+Exit_Button.ImageColor3 = Color3.fromRGB(loader_config.AccentColor[1], loader_config.AccentColor[2], loader_config.AccentColor[3])
 Exit_Button.BorderColor3 = Color3.fromRGB(0, 0, 0)
 Exit_Button.Name = "Exit_Button"
 Exit_Button.AnchorPoint = Vector2.new(1, 0.5)
@@ -188,7 +189,7 @@ Exit_Button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 Exit_Button.Parent = Header
 
 local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Color3.fromRGB(128, 128, 128)
+UIStroke.Color = Color3.fromRGB(loader_config.AccentColor[1], loader_config.AccentColor[2], loader_config.AccentColor[3])
 UIStroke.Transparency = 0.4
 UIStroke.Parent = MainFrame
 
@@ -919,7 +920,7 @@ function Loader:CreateButton(text, callback)
     local Button = Instance.new("TextButton")
     Button.Text = text
     Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Button.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+    Button.BackgroundColor3 = Color3.fromRGB(loader_config.HeaderColor[1], loader_config.HeaderColor[2], loader_config.HeaderColor[3])
     Button.Size = UDim2.new(1, -18, 1, -10)
     Button.Position = UDim2.new(0, 9, 0, 5)
     Button.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
@@ -950,7 +951,7 @@ function Loader:CreateInput(placeholder, callback)
     TextBox.Text = ""
     TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
     TextBox.PlaceholderColor3 = Color3.fromRGB(132, 132, 132)
-    TextBox.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+    TextBox.BackgroundColor3 = Color3.fromRGB(loader_config.HeaderColor[1], loader_config.HeaderColor[2], loader_config.HeaderColor[3])
     TextBox.Size = UDim2.new(1, -18, 1, -10)
     TextBox.Position = UDim2.new(0, 9, 0, 5)
     TextBox.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
@@ -993,7 +994,7 @@ function Loader:CreateSeparator(text)
     SeparatorLiner.BorderColor3 = Color3.fromRGB(0, 0, 0)
     SeparatorLiner.Size = UDim2.new(0.9567098617553711, 1, 0, 1)
     SeparatorLiner.BorderSizePixel = 0
-    SeparatorLiner.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+    SeparatorLiner.BackgroundColor3 = Color3.fromRGB(loader_config.AccentColor[1], loader_config.AccentColor[2], loader_config.AccentColor[3])
     SeparatorLiner.Parent = SeparatorFrame
     
     local SeparatorLabel = Instance.new("TextLabel")
@@ -1257,7 +1258,7 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                 loadingActive = false
                 
                 -- Check for saved key and validate it matches the current valid key
-                local validKey = "Home-e7Abbca2ae03szr240"
+                local validKey = LOADER_VALID_KEY
                 local savedKey = nil
                 local keyFilePath = "HomeKey/Loader_Key.json"
                 if readfile and isfile and isfile(keyFilePath) then
@@ -1444,7 +1445,7 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                     Loader:CreateDescription("Join discord for key")
                     
                     -- Key: Check for saved key and validate it matches the current valid key
-                    local validKey = "Home-e7Abbca2ae03szr240"
+                    local validKey = LOADER_VALID_KEY
                     local savedKey = nil
                     local keyFilePath = "HomeKey/Loader_Key.json"
                     if readfile and isfile and isfile(keyFilePath) then
@@ -1486,7 +1487,7 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                     KeyTextBox.Text = ""
                     KeyTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
                     KeyTextBox.PlaceholderColor3 = Color3.fromRGB(132, 132, 132)
-                    KeyTextBox.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+                    KeyTextBox.BackgroundColor3 = Color3.fromRGB(loader_config.HeaderColor[1], loader_config.HeaderColor[2], loader_config.HeaderColor[3])
                     KeyTextBox.Size = UDim2.new(1, -18, 1, -10)
                     KeyTextBox.Position = UDim2.new(0, 9, 0, 5)
                     KeyTextBox.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
@@ -1528,7 +1529,7 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                     local DiscordButton = Instance.new("TextButton")
                     DiscordButton.Text = "Discord"
                     DiscordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    DiscordButton.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+                    DiscordButton.BackgroundColor3 = Color3.fromRGB(loader_config.HeaderColor[1], loader_config.HeaderColor[2], loader_config.HeaderColor[3])
                     DiscordButton.Size = UDim2.new(0.5, -3, 1, -10)
                     DiscordButton.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
                     DiscordButton.TextSize = 14
@@ -1570,7 +1571,7 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                     local SubmitButton = Instance.new("TextButton")
                     SubmitButton.Text = "Submit key"
                     SubmitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    SubmitButton.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+                    SubmitButton.BackgroundColor3 = Color3.fromRGB(loader_config.HeaderColor[1], loader_config.HeaderColor[2], loader_config.HeaderColor[3])
                     SubmitButton.Size = UDim2.new(0.5, -3, 1, -10)
                     SubmitButton.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
                     SubmitButton.TextSize = 14
@@ -1583,7 +1584,7 @@ LoadButtonClickable.MouseButton1Click:Connect(function()
                     SubmitButton.MouseButton1Click:Connect(function()
                         PlaySound("rbxassetid://156286438")
                         local key = KeyTextBox.Text
-                        if key == "Home-e7Abbca2ae03szr240" then
+                        if key == LOADER_VALID_KEY then
                             if KeyRightLabel then
                                 KeyRightLabel.Text = key
                                 KeyRightLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
@@ -1907,7 +1908,14 @@ local product3 = Loader:CreateProduct({
     Info = {
         { Type = "Description", Text = "Send a message to the developer directly for any bugs or suggestions. Misuse of this will blacklist you from using this script." },
         { Type = "Input", Text = "Type your message here...", Callback = function(text)  
-            getgenv().DevMessage = text 
+            local msg = tostring(text or "")
+            local lowered = string.lower(msg)
+            -- Do not block/yield while typing; only sanitize cached input here.
+            if string.find(msg, LOADER_VALID_KEY, 1, true) or string.find(lowered, "submit key", 1, true) or string.find(lowered, "enter key", 1, true) or string.find(lowered, "home-", 1, true) then
+                getgenv().DevMessage = nil
+                return
+            end
+            getgenv().DevMessage = msg
         end },
         { Type = "Button", Text = "Send Message", Callback = function(btn) 
             PlaySound("rbxassetid://156286438")
@@ -1939,6 +1947,17 @@ local product3 = Loader:CreateProduct({
 
             local msg = getgenv().DevMessage
             if msg and msg ~= "" then
+                local lowered = string.lower(msg)
+                if string.find(msg, LOADER_VALID_KEY, 1, true) or string.find(lowered, "submit key", 1, true) or string.find(lowered, "enter key", 1, true) or string.find(lowered, "home-", 1, true) then
+                    if LoaderName then
+                        local oldText = LoaderName.Text
+                        LoaderName.Text = "Declined: key text not allowed"
+                        task.wait(1.5)
+                        LoaderName.Text = oldText
+                    end
+                    btn.Text = "Send Message"
+                    return
+                end
                 -- Enable cooldown immediately
                 btn.Text = "Sending..."
 
@@ -2076,12 +2095,48 @@ if workspace:FindFirstChild("HRP_Visualizer") then
     workspace.HRP_Visualizer:Destroy()
 end
 
+local function injectStyleInformationTabToggle(libSource)
+    if type(libSource) ~= "string" or libSource == "" then
+        return libSource
+    end
+    if libSource:find("information_list", 1, true) then
+        return libSource
+    end
+    local keybindBlock = ' section:toggle({name = "Keybind List", flag = "keybind_list", default = true, callback = function(bool)\n library.keybind_list_frame.Visible = bool\n end})'
+    local withInfo = keybindBlock .. '\n section:toggle({name = "Information Tab", flag = "information_list", default = true, callback = function(bool)\n if library.info_list_frame then\n library.info_list_frame.Visible = bool\n end\n end})'
+    local kbStart = libSource:find(keybindBlock, 1, true)
+    if not kbStart then
+        return libSource
+    end
+    libSource = libSource:sub(1, kbStart - 1) .. withInfo .. libSource:sub(kbStart + #keybindBlock)
+    local initOld = "library.keybind_list_frame.Visible = true\n watermark.set_visible(false)"
+    local initNew = "library.keybind_list_frame.Visible = true\n if library.info_list_frame then library.info_list_frame.Visible = (flags.information_list ~= false) end\n watermark.set_visible(false)"
+    local initAt = libSource:find(initOld, 1, true)
+    if initAt then
+        libSource = libSource:sub(1, initAt - 1) .. initNew .. libSource:sub(initAt + #initOld)
+    end
+    return libSource
+end
+
 local success, code = pcall(function() return readfile("UiLib.txt") end)
 
 if success and code then
+    code = injectStyleInformationTabToggle(code)
     library = loadstring(code)(flags)
 else
-    library = loadstring(game:HttpGet("https://raw.githubusercontent.com/hiddenassets5555/peppapig12dahood/refs/heads/main/test?t="..tostring(os.time())))(flags)
+    code = injectStyleInformationTabToggle(game:HttpGet("https://raw.githubusercontent.com/hiddenassets5555/peppapig12dahood/refs/heads/main/test?t="..tostring(os.time())))
+    library = loadstring(code)(flags)
+end
+
+-- Font safety: ensure UI library always has a valid base font after loader runs.
+if library then
+    local okFontType = false
+    pcall(function()
+        okFontType = (typeof(library.font) == "Font")
+    end)
+    if not okFontType then
+        library.font = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    end
 end
 
 getgenv().TraeLibrary = library -- Store new library instance for future cleanup
@@ -2127,14 +2182,14 @@ if library then
     -- Fix 0: Apply User Theme (Critical for colors to show up)
     local rgb = Color3.fromRGB
     library.themes.preset = {
-        ["outline"] = rgb(0, 0, 0),          -- OutlineColor: 000000
-        ["inline"] = rgb(43, 42, 42),       -- MainColor: 2b2a2a
-        ["accent"] = rgb(128, 128, 128),     -- AccentColor: 808080
-        ["high_contrast"] = rgb(20, 20, 20), -- BackgroundColor: 141414
-        ["low_contrast"] = rgb(43, 42, 42), -- MainColor: 2b2a2a
-        ["text"] = rgb(255, 255, 255),       -- FontColor: ffffff
+        ["outline"] = rgb(0, 0, 0),
+        ["inline"] = rgb(18, 18, 18),
+        ["accent"] = rgb(161, 140, 174),
+        ["high_contrast"] = rgb(14, 13, 13),
+        ["low_contrast"] = rgb(18, 18, 18),
+        ["text"] = rgb(255, 255, 255),
         ["text_outline"] = rgb(0, 0, 0),
-        ["glow"] = rgb(0, 0, 0), 
+        ["glow"] = rgb(161, 140, 174),
     }
 
     -- Fix 2: Override add_info_item to support custom colors
@@ -3808,6 +3863,16 @@ local function getFlagColor(flag, default)
     return default
 end
 
+-- Screen size of a world-height "size" at depth Z must scale with tan(verticalFOV/2); omitting that breaks boxes/healthbar at high FOV.
+local function espBoxScaleFactor(size, depthZ, cam)
+    local z = math.max(depthZ, 1e-4)
+    local refFov = defaultCameraFOV or cam.FieldOfView
+    local tanRef = math.tan(math.rad(refFov) * 0.5)
+    local tanCur = math.tan(math.rad(cam.FieldOfView) * 0.5)
+    if tanCur < 1e-6 then tanCur = 1e-6 end
+    return (size * cam.ViewportSize.Y) / (z * 2) * (tanRef / tanCur)
+end
+
 local function UpdateBronxESP(p)
     local isLocated = trackedModerators[p.UserId]
     if not flags.esp_enabled_dummy and not isLocated then 
@@ -3885,7 +3950,7 @@ local function UpdateBronxESP(p)
     end
 
     local size = root.Size.Y
-    local scaleFactor = (size * currentCamera.ViewportSize.Y) / (pos.Z * 2)
+    local scaleFactor = espBoxScaleFactor(size, pos.Z, currentCamera)
     local w, h = 3 * scaleFactor, 4.5 * scaleFactor
     
     -- Boxes
@@ -4094,7 +4159,7 @@ local function UpdateBronxESP(p)
             obj.Font = Enum.Font.RobotoMono
         end
     end
-    
+
     -- Name
     if flags.esp_name_dummy and not isLocated then
         b.Name.Visible = true
@@ -4810,7 +4875,7 @@ run.RenderStepped:Connect(function()
                                             if not currentCamera then return end
                                             local pos, _ = currentCamera:WorldToScreenPoint(root.Position)
                                             local size = root.Size.Y
-                                            local scaleFactor = (size * currentCamera.ViewportSize.Y) / (pos.Z * 2)
+                                            local scaleFactor = espBoxScaleFactor(size, pos.Z, currentCamera)
                                             local w_box, h_box = 3 * scaleFactor, 4.5 * scaleFactor
                                             
                                             -- Corner Box Top-Right
@@ -4882,6 +4947,7 @@ run.RenderStepped:Connect(function()
                                     if modTagText then modTagText.Visible = false end
                                     if roleText then roleText.Visible = false end
                                 end
+
                                 if not isLocated then
                                     if flags.esp_distance_text and not hideESP then
                                         local offsetY = 0
@@ -5067,7 +5133,7 @@ do
                 library:remove_info_item("Desync Offset")
                 library:remove_info_item("Detected")
                 if library.info_list_frame then
-                    library.info_list_frame.Visible = true
+                    library.info_list_frame.Visible = (library.flags.information_list ~= false)
                 end
             end
 
@@ -5229,10 +5295,13 @@ do
              if library.flags["desync_hrp_material"] == "Neon" then
                 matEnum = Enum.Material.Neon
              end
+             -- ForceField is nearly invisible at ~0.6 transparency; Neon stays slightly more see-through.
+             local ghostTransparency = (matEnum == Enum.Material.ForceField) and 0.3 or 0.6
 
              for _, part in pairs(char:GetDescendants()) do
-                local isAccessory = part:FindFirstAncestorWhichIsA("Accessory")
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and not part:FindFirstAncestorWhichIsA("Tool") and (matEnum ~= Enum.Material.Neon or not isAccessory) then
+                -- Skip tools and accessory handles: for ForceField, (mat ~= Neon or not accessory) was always true, so accessories were included and cluttered / hid HRP; match Neon by skipping all accessory descendants.
+                local inAccessory = part:FindFirstAncestorWhichIsA("Accessory")
+                if part:IsA("BasePart") and not part:FindFirstAncestorWhichIsA("Tool") and not inAccessory then
                     -- Mark as valid for this frame
                     currentFrameParts[part] = true
                     
@@ -5249,7 +5318,9 @@ do
                          ghostPart.Massless = true
                          ghostPart.Material = matEnum
                          ghostPart.Color = visColor
-                         ghostPart.Transparency = 0.5
+                         ghostPart.Transparency = ghostTransparency
+                         ghostPart.Reflectance = 0
+                         ghostPart.CastShadow = false
                          
                          -- Remove Scripts, Joints, Constraints, Decals (Faces), GUIs (NameTags), Textures, Attachments, ParticleEmitters (Aura effects)
                         for _, child in pairs(ghostPart:GetChildren()) do
@@ -5273,7 +5344,9 @@ do
                      ghostPart.CFrame = smoothedGhostCFrame * relCFrame
                      ghostPart.Color = visColor
                      ghostPart.Material = matEnum
-                     ghostPart.Transparency = 0.6
+                     ghostPart.Transparency = ghostTransparency
+                     ghostPart.Reflectance = 0
+                     ghostPart.CastShadow = false
                  end
              end
              
@@ -5838,7 +5911,9 @@ Aiming.open_tab()
                                 end
                                 
                                 library:add_info_item("Detected", detectedSCPName, Color3.fromRGB(255, 0, 0))
-                                library.info_list_frame.Visible = true
+                                if library.info_list_frame then
+                                    library.info_list_frame.Visible = (library.flags.information_list ~= false)
+                                end
                             else
                                 autoDesyncActive = false
                                 if library.DesyncData then library.DesyncData.AutoActive = false end
